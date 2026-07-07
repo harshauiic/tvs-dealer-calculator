@@ -1,0 +1,16 @@
+{
+  "sookshama_discount_pct": 70.0,
+  "iib_discount_pct": 100.0,
+  "burglary_rate_pct": 0.005,
+  "mbd_rate_per_thousand": 0.25,
+  "plate_glass_rate_pct": 0.03,
+  "neon_sign_rate_pct": 0.03,
+  "public_liability_rate_pct": 0.03,
+  "fidelity_rate_pct": 0.1,
+  "money_without_terror_rate_pct": 0.01,
+  "money_with_terror_rate_pct": 0.031,
+  "gst_rate_pct": 18,
+  "si_threshold": 50000000,
+  "floater_si_cap": 500000000,
+  "max_location_si": 500000000
+}
