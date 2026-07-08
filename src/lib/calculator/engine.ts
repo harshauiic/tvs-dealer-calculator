@@ -39,22 +39,32 @@ function locationNonStockSI(loc: LocationInput): number {
   );
 }
 
+function validateLocationFields(
+  loc: LocationInput,
+  eqZone: number | null,
+): string[] {
+  const errors: string[] = [];
+  if (!loc.address.trim()) errors.push("Please enter Risk location Address");
+  if (!loc.pincode || loc.pincode.length !== 6) errors.push("Please enter valid Pincode");
+  if (eqZone === null && loc.pincode.length === 6) {
+    errors.push("Please enter correct Pincode above");
+  }
+  if (!loc.occupancy) errors.push("Select Risk description accordingly");
+  if (loc.claims_history === "Select") errors.push("Select Claims detail accordingly");
+  const total = locationTotalSI(loc);
+  if (total > 500_000_000) errors.push("Location Sum Insured must be less than 50 Crores");
+  return errors;
+}
+
 function validateLocation(
   loc: LocationInput,
   eqZone: number | null,
   insuredName: string,
   commAddress: string,
 ): string[] {
-  const errors: string[] = [];
+  const errors = validateLocationFields(loc, eqZone);
   if (!insuredName.trim()) errors.push("Please enter Insured name");
   if (!commAddress.trim()) errors.push("Please enter Communication Address");
-  if (!loc.address.trim()) errors.push("Please enter Risk location Address");
-  if (!loc.pincode || loc.pincode.length !== 6) errors.push("Please enter valid Pincode");
-  if (eqZone === null) errors.push("Please enter correct Pincode above");
-  if (!loc.occupancy) errors.push("Select Risk description accordingly");
-  if (loc.claims_history === "Select") errors.push("Select Claims detail accordingly");
-  const total = locationTotalSI(loc);
-  if (total > 500_000_000) errors.push("Location Sum Insured must be less than 50 Crores");
   return errors;
 }
 
@@ -153,11 +163,12 @@ export function calcProposal(
       input.insured_name,
       input.communication_address,
     );
+    const fireErrors = validateLocationFields(loc, eqZone);
 
     let firePremium: number | string = 0;
     let fireRate: number | null = null;
 
-    if (errors.length === 0 && eqZone !== null) {
+    if (fireErrors.length === 0 && eqZone !== null) {
       const fire = calcLocationFirePremium(
         loc,
         eqZone,
@@ -169,6 +180,8 @@ export function calcProposal(
       );
       firePremium = fire.premium;
       fireRate = fire.rate;
+    } else if (fireErrors.length > 0) {
+      firePremium = fireErrors[0];
     } else if (eqZone === null && loc.pincode.length === 6) {
       firePremium = "Please enter correct Pincode above";
     }

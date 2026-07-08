@@ -98,7 +98,7 @@ function ProposalDocument({
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Floater Cover</Text>
           <View style={styles.row}>
-            <Text style={styles.label}>Floater cover</Text>
+            <Text style={styles.label}>Floater cover required</Text>
             <Text style={styles.value}>{input.floater_cover.enabled ? "Yes" : "No"}</Text>
           </View>
           {input.floater_cover.enabled && (

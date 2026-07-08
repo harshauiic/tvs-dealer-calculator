@@ -10,9 +10,6 @@ import type {
 
 export function resolveFireCover(terrorism: TerrorismCover): FireCoverOption {
   if (!terrorism.opted) return "Cover Opted without Terrorism";
-  if (terrorism.scope === "Only money in transit cover") {
-    return "Cover Opted without Terrorism";
-  }
   return "Cover Opted with Terrorism";
 }
 
@@ -22,10 +19,7 @@ export function resolveMoneyCover(
 ): MoneyCoverOption {
   if (moneyOpted === "Not Opted") return "Cover Not Opted";
   if (!terrorism.opted) return "Cover Opted without Terrorism";
-  if (
-    terrorism.scope === "Only money in transit cover" ||
-    terrorism.scope === "Both fire and money in transit"
-  ) {
+  if (terrorism.scope === "Both fire and money in transit") {
     return "Cover Opted with Terrorism";
   }
   return "Cover Opted without Terrorism";

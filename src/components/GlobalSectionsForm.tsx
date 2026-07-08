@@ -37,8 +37,8 @@ export default function GlobalSectionsForm({ sections, locations, onChange }: Pr
 
   return (
     <div className="card space-y-4">
-      <h2 className="section-title">Global Sections</h2>
-      <div className="grid md:grid-cols-2 gap-4">
+      <h2 className="section-title">Other Sections</h2>
+      <div className="space-y-4 max-w-xl">
         {TOGGLE_SECTIONS.map(([key, label, gate]) => {
           const enabled = isSectionEnabled(locations, gate);
           return (
@@ -65,7 +65,7 @@ export default function GlobalSectionsForm({ sections, locations, onChange }: Pr
       </div>
 
       {sections.public_liability === "Cover Opted" && (
-        <div>
+        <div className="max-w-xl">
           <label>Public Liability Sum Insured</label>
           <input
             type="number"
@@ -77,7 +77,7 @@ export default function GlobalSectionsForm({ sections, locations, onChange }: Pr
       )}
 
       {sections.fidelity === "Cover Opted" && (
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="space-y-4 max-w-xl">
           <div>
             <label>No of permanent employees</label>
             <input

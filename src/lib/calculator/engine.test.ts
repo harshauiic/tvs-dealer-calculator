@@ -131,4 +131,21 @@ describe("calcProposal", () => {
       "Kindly refer proposal to office",
     );
   });
+
+  it("calculates location fire premium before insured details are filled", () => {
+    const input = buildAditiInput();
+    input.insured_name = "";
+    input.communication_address = "";
+    const pincodeMap = new Map(
+      aditiFixture.locations.map((l) => [l.pincode, Number(l.eq_zone)]),
+    );
+    const result = calcProposal(input, rateMaster, pincodeMap, settings);
+
+    expect(typeof result.locations[0].fire_premium).toBe("number");
+    expect(result.locations[0].fire_premium).toBeCloseTo(
+      aditiFixture.locations[0].fire_premium,
+      1,
+    );
+    expect(result.errors).toContain("Please enter Insured name");
+  });
 });

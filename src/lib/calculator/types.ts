@@ -21,7 +21,6 @@ export type MoneyCoverToggle = "Opted" | "Not Opted";
 
 export type TerrorismScope =
   | "Only fire cover"
-  | "Only money in transit cover"
   | "Both fire and money in transit";
 
 export interface TerrorismCover {
@@ -181,9 +180,13 @@ function normalizeTerrorismCover(
   input: Partial<ProposalInput> & { sections?: GlobalSections },
 ): TerrorismCover {
   if (input.terrorism) {
+    const scope =
+      (input.terrorism.scope as string) === "Only money in transit cover"
+        ? "Only fire cover"
+        : input.terrorism.scope ?? "";
     return {
       opted: input.terrorism.opted ?? false,
-      scope: input.terrorism.scope ?? "",
+      scope,
     };
   }
   return defaultTerrorismCover();

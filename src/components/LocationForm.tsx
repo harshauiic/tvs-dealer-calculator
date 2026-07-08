@@ -53,7 +53,7 @@ export default function LocationForm({
   const moneyOpted = location.money.cover === "Opted";
 
   return (
-    <div className="card space-y-4">
+    <div className="card space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="section-title mb-0 border-0 pb-0">Location {index + 1}</h3>
         {canRemove && (
@@ -63,84 +63,90 @@ export default function LocationForm({
         )}
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        <div>
-          <label>Dealer code</label>
-          <input
-            value={location.dealer_code}
-            onChange={(e) => update("dealer_code", e.target.value)}
-          />
-        </div>
-        <div>
-          <label>Risk location Pincode</label>
-          <input
-            value={location.pincode}
-            maxLength={6}
-            onChange={(e) => update("pincode", e.target.value.replace(/\D/g, ""))}
-          />
-          {location.pincode.length === 6 && (
-            <p className="text-xs mt-1 text-slate-500">
-              Earthquake Zone: {eqZone ?? "Invalid pincode"}
-            </p>
-          )}
-        </div>
-        <div className="md:col-span-2">
-          <label>Risk location Address</label>
-          <textarea
-            rows={2}
-            value={location.address}
-            onChange={(e) => update("address", e.target.value)}
-          />
-        </div>
-        <div className="md:col-span-2">
-          <label>Risk description</label>
-          <select
-            value={location.occupancy}
-            onChange={(e) =>
-              update("occupancy", e.target.value as LocationInput["occupancy"])
-            }
-          >
-            <option value="">Select</option>
-            {OCCUPANCY_TYPES.map((o) => (
-              <option key={o} value={o}>
-                {o}
-              </option>
-            ))}
-          </select>
+      <div className="space-y-4">
+        <h4 className="subsection-title">Location Details</h4>
+        <div className="space-y-4 max-w-xl">
+          <div>
+            <label>Dealer code</label>
+            <input
+              value={location.dealer_code}
+              onChange={(e) => update("dealer_code", e.target.value)}
+            />
+          </div>
+          <div>
+            <label>Risk location Pincode</label>
+            <input
+              value={location.pincode}
+              maxLength={6}
+              onChange={(e) => update("pincode", e.target.value.replace(/\D/g, ""))}
+            />
+            {location.pincode.length === 6 && (
+              <p className="text-xs mt-1 text-slate-500">
+                Earthquake Zone: {eqZone ?? "Invalid pincode"}
+              </p>
+            )}
+          </div>
+          <div>
+            <label>Risk location Address</label>
+            <textarea
+              rows={2}
+              value={location.address}
+              onChange={(e) => update("address", e.target.value)}
+            />
+          </div>
+          <div>
+            <label>Risk description</label>
+            <select
+              value={location.occupancy}
+              onChange={(e) =>
+                update("occupancy", e.target.value as LocationInput["occupancy"])
+              }
+            >
+              <option value="">Select</option>
+              {OCCUPANCY_TYPES.map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        <div>
-          <label>Name of Insurance company</label>
-          <input
-            value={location.insurance_company}
-            onChange={(e) => update("insurance_company", e.target.value)}
-          />
-        </div>
-        <div>
-          <label>Period of cover</label>
-          <input
-            value={location.period_of_cover}
-            onChange={(e) => update("period_of_cover", e.target.value)}
-          />
-        </div>
-        <div>
-          <label>Claims in the past 3 years</label>
-          <select
-            value={location.claims_history}
-            onChange={(e) =>
-              update("claims_history", e.target.value as LocationInput["claims_history"])
-            }
-          >
-            <option value="Select">Select</option>
-            <option value="Nil claims in the past 3 years">
-              Nil claims in the past 3 years
-            </option>
-            <option value="We have claimed in the past 3 years">
-              We have claimed in the past 3 years
-            </option>
-          </select>
+      <div className="space-y-4">
+        <h4 className="subsection-title">Expiring policy details</h4>
+        <div className="space-y-4 max-w-xl">
+          <div>
+            <label>Name of Insurance company</label>
+            <input
+              value={location.insurance_company}
+              onChange={(e) => update("insurance_company", e.target.value)}
+            />
+          </div>
+          <div>
+            <label>Period of cover</label>
+            <input
+              value={location.period_of_cover}
+              onChange={(e) => update("period_of_cover", e.target.value)}
+            />
+          </div>
+          <div>
+            <label>Claims in the past 3 years</label>
+            <select
+              value={location.claims_history}
+              onChange={(e) =>
+                update("claims_history", e.target.value as LocationInput["claims_history"])
+              }
+            >
+              <option value="Select">Select</option>
+              <option value="Nil claims in the past 3 years">
+                Nil claims in the past 3 years
+              </option>
+              <option value="We have claimed in the past 3 years">
+                We have claimed in the past 3 years
+              </option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -176,9 +182,9 @@ export default function LocationForm({
           <h4 className="font-medium text-slate-800 mb-0">
             Section 8 - Money in transit (Location {index + 1})
           </h4>
-          <div className="flex items-center gap-4">
+          <div className="choice-group">
             <span className="text-sm font-medium text-slate-700">Money cover</span>
-            <label className="inline-flex items-center gap-1.5 text-sm cursor-pointer">
+            <label className="choice-control">
               <input
                 type="radio"
                 name={`money-cover-${location.id}`}
@@ -187,7 +193,7 @@ export default function LocationForm({
               />
               Not Opted
             </label>
-            <label className="inline-flex items-center gap-1.5 text-sm cursor-pointer">
+            <label className="choice-control">
               <input
                 type="radio"
                 name={`money-cover-${location.id}`}

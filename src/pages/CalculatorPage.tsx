@@ -203,7 +203,7 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
 
       <div className="card space-y-4">
         <h2 className="section-title">Terrorism</h2>
-        <label className="inline-flex items-center gap-2 cursor-pointer">
+        <label className="choice-control">
           <input
             type="checkbox"
             checked={input.terrorism.opted}
@@ -217,10 +217,10 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
               }))
             }
           />
-          <span className="text-sm font-medium text-slate-800">Opt for terrorism</span>
+          <span>Opt for terrorism</span>
         </label>
         {input.terrorism.opted && (
-          <div>
+          <div className="max-w-xl">
             <label>Terrorism cover required for</label>
             <select
               value={input.terrorism.scope}
@@ -235,9 +235,6 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
               }
             >
               <option value="Only fire cover">Only fire cover</option>
-              <option value="Only money in transit cover">
-                Only money in transit cover
-              </option>
               <option value="Both fire and money in transit">
                 Both fire and money in transit
               </option>
@@ -248,16 +245,16 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
 
       <div className="card space-y-4">
         <h2 className="section-title">Floater Cover</h2>
-        <label className="inline-flex items-center gap-2 cursor-pointer">
+        <label className="choice-control">
           <input
             type="checkbox"
             checked={input.floater_cover.enabled}
             onChange={(e) => updateFloaterCover(e.target.checked)}
           />
-          <span className="text-sm font-medium text-slate-800">Floater cover</span>
+          <span>Floater cover required</span>
         </label>
         {input.floater_cover.enabled && (
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-4 max-w-xl">
             <div>
               <label>Floater sum insured required</label>
               <input
