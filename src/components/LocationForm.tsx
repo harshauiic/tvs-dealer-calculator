@@ -5,6 +5,7 @@ interface Props {
   location: LocationInput;
   index: number;
   eqZone: number | null;
+  floaterCoverEnabled: boolean;
   onChange: (updated: LocationInput) => void;
   onRemove: () => void;
   canRemove: boolean;
@@ -23,6 +24,7 @@ export default function LocationForm({
   location,
   index,
   eqZone,
+  floaterCoverEnabled,
   onChange,
   onRemove,
   canRemove,
@@ -47,6 +49,8 @@ export default function LocationForm({
     num("plate_glass_si") +
     num("neon_sign_si") +
     num("stocks_si");
+
+  const moneyOpted = location.money.cover === "Opted";
 
   return (
     <div className="card space-y-4">
@@ -138,64 +142,63 @@ export default function LocationForm({
             </option>
           </select>
         </div>
-        <div>
-          <label>Section 1 - Fire cover</label>
-          <select
-            value={location.fire_cover}
-            onChange={(e) =>
-              update("fire_cover", e.target.value as LocationInput["fire_cover"])
-            }
-          >
-            <option value="Cover Opted without Terrorism">
-              Cover Opted without Terrorism
-            </option>
-            <option value="Cover Opted with Terrorism">
-              Cover Opted with Terrorism
-            </option>
-          </select>
-        </div>
       </div>
 
       <div>
         <h4 className="font-medium text-slate-800 mb-2">Section 1 - Fire Sum Insured</h4>
         <div className="grid md:grid-cols-3 gap-3">
-          {SI_FIELDS.map(([key, label]) => (
-            <div key={key}>
-              <label>{label}</label>
-              <input
-                type="number"
-                min={0}
-                value={location[key]}
-                onChange={(e) => update(key, Number(e.target.value))}
-              />
-            </div>
-          ))}
+          {SI_FIELDS.map(([key, label]) => {
+            const isStocks = key === "stocks_si";
+            return (
+              <div key={key}>
+                <label>{label}</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={location[key]}
+                  disabled={isStocks && floaterCoverEnabled}
+                  onChange={(e) => update(key, Number(e.target.value))}
+                />
+              </div>
+            );
+          })}
         </div>
         <p className="text-sm text-slate-600 mt-2">Total SI: ₹{totalSI.toLocaleString("en-IN")}</p>
+        {floaterCoverEnabled && (
+          <p className="text-xs text-slate-500 mt-1">
+            Stocks SI is disabled while Floater cover is selected.
+          </p>
+        )}
       </div>
 
       <div>
-        <h4 className="font-medium text-slate-800 mb-2">
-          Section 8 - Money in transit (Location {index + 1})
-        </h4>
-        <div className="grid md:grid-cols-2 gap-4">
-          <div>
-            <label>Money cover</label>
-            <select
-              value={location.money.cover}
-              onChange={(e) =>
-                updateMoney("cover", e.target.value as LocationInput["money"]["cover"])
-              }
-            >
-              <option value="Cover Not Opted">Cover Not Opted</option>
-              <option value="Cover Opted without Terrorism">
-                Cover Opted without Terrorism
-              </option>
-              <option value="Cover Opted with Terrorism">
-                Cover Opted with Terrorism
-              </option>
-            </select>
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
+          <h4 className="font-medium text-slate-800 mb-0">
+            Section 8 - Money in transit (Location {index + 1})
+          </h4>
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-slate-700">Money cover</span>
+            <label className="inline-flex items-center gap-1.5 text-sm cursor-pointer">
+              <input
+                type="radio"
+                name={`money-cover-${location.id}`}
+                checked={!moneyOpted}
+                onChange={() => updateMoney("cover", "Not Opted")}
+              />
+              Not Opted
+            </label>
+            <label className="inline-flex items-center gap-1.5 text-sm cursor-pointer">
+              <input
+                type="radio"
+                name={`money-cover-${location.id}`}
+                checked={moneyOpted}
+                onChange={() => updateMoney("cover", "Opted")}
+              />
+              Opted
+            </label>
           </div>
+        </div>
+        <div className="grid md:grid-cols-2 gap-4">
           <div>
             <label>Annual Carrying limit</label>
             <input

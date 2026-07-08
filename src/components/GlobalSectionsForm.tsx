@@ -1,21 +1,36 @@
-import type { GlobalSections } from "../lib/calculator";
+import type { GlobalSections, LocationInput } from "../lib/calculator";
 
 interface Props {
   sections: GlobalSections;
+  locations: LocationInput[];
   onChange: (sections: GlobalSections) => void;
 }
 
 const TOGGLE_SECTIONS = [
-  ["stock_floater", "Stock Floater required for locations"],
-  ["burglary", "Section 2 - Burglary (All locations)"],
-  ["mbd_eei", "Section 3 - MBD/EEI (All locations)"],
-  ["plate_glass", "Section 4 - Plate glass (All locations)"],
-  ["neon_sign", "Section 5 - Neon sign (All locations)"],
-  ["public_liability", "Section 6 - Public Liability (All locations)"],
-  ["fidelity", "Section 7 - Fidelity (All locations)"],
+  ["burglary", "Section 2 - Burglary (All locations)", null],
+  ["mbd_eei", "Section 3 - MBD/EEI (All locations)", "plant"],
+  ["plate_glass", "Section 4 - Plate glass (All locations)", "plate"],
+  ["neon_sign", "Section 5 - Neon sign (All locations)", "neon"],
+  ["public_liability", "Section 6 - Public Liability (All locations)", null],
+  ["fidelity", "Section 7 - Fidelity (All locations)", null],
 ] as const;
 
-export default function GlobalSectionsForm({ sections, onChange }: Props) {
+type SiGate = (typeof TOGGLE_SECTIONS)[number][2];
+
+function isSectionEnabled(locations: LocationInput[], gate: SiGate): boolean {
+  if (gate === "plant") {
+    return locations.some((l) => l.plant_machinery_si > 0);
+  }
+  if (gate === "plate") {
+    return locations.some((l) => l.plate_glass_si > 0);
+  }
+  if (gate === "neon") {
+    return locations.some((l) => l.neon_sign_si > 0);
+  }
+  return true;
+}
+
+export default function GlobalSectionsForm({ sections, locations, onChange }: Props) {
   const update = <K extends keyof GlobalSections>(key: K, value: GlobalSections[K]) => {
     onChange({ ...sections, [key]: value });
   };
@@ -24,20 +39,29 @@ export default function GlobalSectionsForm({ sections, onChange }: Props) {
     <div className="card space-y-4">
       <h2 className="section-title">Global Sections</h2>
       <div className="grid md:grid-cols-2 gap-4">
-        {TOGGLE_SECTIONS.map(([key, label]) => (
-          <div key={key}>
-            <label>{label}</label>
-            <select
-              value={sections[key]}
-              onChange={(e) =>
-                update(key, e.target.value as GlobalSections[typeof key])
-              }
-            >
-              <option value="Cover Opted">Cover Opted</option>
-              <option value="Cover Not Opted">Cover Not Opted</option>
-            </select>
-          </div>
-        ))}
+        {TOGGLE_SECTIONS.map(([key, label, gate]) => {
+          const enabled = isSectionEnabled(locations, gate);
+          return (
+            <div key={key}>
+              <label>{label}</label>
+              <select
+                value={enabled ? sections[key] : "Cover Not Opted"}
+                disabled={!enabled}
+                onChange={(e) =>
+                  update(key, e.target.value as GlobalSections[typeof key])
+                }
+              >
+                <option value="Cover Opted">Cover Opted</option>
+                <option value="Cover Not Opted">Cover Not Opted</option>
+              </select>
+              {!enabled && (
+                <p className="text-xs text-slate-500 mt-1">
+                  Enter a Sum Insured value in at least one location to enable this section.
+                </p>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {sections.public_liability === "Cover Opted" && (

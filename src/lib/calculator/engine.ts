@@ -3,6 +3,8 @@ import {
   computeFloaterContextRate,
   findRateRow,
   lookupEqZone,
+  resolveFireCover,
+  resolveMoneyCover,
   sumPremiums,
 } from "./utils";
 import type {
@@ -61,6 +63,7 @@ function calcLocationFirePremium(
   eqZone: number,
   floaterMaxRate: number | null,
   stockFloater: boolean,
+  withTerrorism: boolean,
   rateMaster: RateMasterRow[],
   settings: GlobalSettings,
 ): { premium: number | string; rate: number | null } {
@@ -73,7 +76,6 @@ function calcLocationFirePremium(
 
   const totalSI = locationTotalSI(loc);
   const nonStockSI = locationNonStockSI(loc);
-  const withTerrorism = loc.fire_cover === "Cover Opted with Terrorism";
   const locationRate = computeFireRate(row, totalSI, withTerrorism, settings);
 
   if (stockFloater && floaterMaxRate !== null) {
@@ -88,9 +90,11 @@ function calcLocationFirePremium(
 function calcLocationMoneyPremium(
   loc: LocationInput,
   settings: GlobalSettings,
+  terrorism: ProposalInput["terrorism"],
 ): { totalSI: number; premium: number | string } {
   const money = loc.money;
-  if (money.cover === "Cover Not Opted") {
+  const effectiveCover = resolveMoneyCover(money.cover, terrorism);
+  if (effectiveCover === "Cover Not Opted") {
     return { totalSI: 0, premium: "Cover Not Opted" };
   }
   if (!money.annual_carrying_limit && money.annual_carrying_limit !== 0) {
@@ -103,7 +107,7 @@ function calcLocationMoneyPremium(
   const totalSI =
     money.annual_carrying_limit + money.cash_in_safe + money.cash_in_till;
   const ratePct =
-    money.cover === "Cover Opted with Terrorism"
+    effectiveCover === "Cover Opted with Terrorism"
       ? settings.money_with_terror_rate_pct
       : settings.money_without_terror_rate_pct;
 
@@ -120,7 +124,8 @@ export function calcProposal(
     (l) => l.claims_history === "We have claimed in the past 3 years",
   );
 
-  const stockFloater = input.sections.stock_floater === "Cover Opted";
+  const stockFloater = input.floater_cover.enabled;
+  const withFireTerrorism = resolveFireCover(input.terrorism) === "Cover Opted with Terrorism";
 
   const floaterRates = input.locations
     .map((loc) => {
@@ -130,7 +135,7 @@ export function calcProposal(
         loc.occupancy,
         eqZone,
         locationNonStockSI(loc),
-        loc.fire_cover === "Cover Opted with Terrorism",
+        withFireTerrorism,
         rateMaster,
         settings,
       );
@@ -158,6 +163,7 @@ export function calcProposal(
         eqZone,
         floaterMaxRate,
         stockFloater,
+        withFireTerrorism,
         rateMaster,
         settings,
       );
@@ -167,7 +173,7 @@ export function calcProposal(
       firePremium = "Please enter correct Pincode above";
     }
 
-    const money = calcLocationMoneyPremium(loc, settings);
+    const money = calcLocationMoneyPremium(loc, settings, input.terrorism);
 
     return {
       id: loc.id,

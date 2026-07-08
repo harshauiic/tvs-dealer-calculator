@@ -81,6 +81,44 @@ function ProposalDocument({
           </View>
         </View>
 
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Terrorism</Text>
+          <View style={styles.row}>
+            <Text style={styles.label}>Opt for terrorism</Text>
+            <Text style={styles.value}>{input.terrorism.opted ? "Yes" : "No"}</Text>
+          </View>
+          {input.terrorism.opted && (
+            <View style={styles.row}>
+              <Text style={styles.label}>Terrorism cover required for</Text>
+              <Text style={styles.value}>{input.terrorism.scope}</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Floater Cover</Text>
+          <View style={styles.row}>
+            <Text style={styles.label}>Floater cover</Text>
+            <Text style={styles.value}>{input.floater_cover.enabled ? "Yes" : "No"}</Text>
+          </View>
+          {input.floater_cover.enabled && (
+            <>
+              <View style={styles.row}>
+                <Text style={styles.label}>Floater sum insured required</Text>
+                <Text style={styles.value}>
+                  {formatCurrency(input.floater_cover.floater_sum_insured)}
+                </Text>
+              </View>
+              <View style={styles.row}>
+                <Text style={styles.label}>Maximum sum insured per location</Text>
+                <Text style={styles.value}>
+                  {formatCurrency(input.floater_cover.max_sum_insured_per_location)}
+                </Text>
+              </View>
+            </>
+          )}
+        </View>
+
         {input.locations.map((loc, i) => (
           <View key={loc.id} style={styles.section}>
             <Text style={styles.sectionTitle}>Location {i + 1}</Text>

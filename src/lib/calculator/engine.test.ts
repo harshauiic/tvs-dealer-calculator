@@ -11,8 +11,6 @@ const settings = globalSettingsSeed as GlobalSettings;
 
 function buildAditiInput(): ProposalInput {
   const sections = defaultGlobalSections();
-  sections.stock_floater =
-    aditiFixture.stock_floater === "Cover Opted" ? "Cover Opted" : "Cover Not Opted";
   sections.burglary =
     aditiFixture.global_sections.burglary === "Cover Opted"
       ? "Cover Opted"
@@ -46,10 +44,6 @@ function buildAditiInput(): ProposalInput {
       pincode: loc.pincode,
       occupancy: loc.occupancy as ProposalInput["locations"][0]["occupancy"],
       claims_history: "Nil claims in the past 3 years" as const,
-      fire_cover:
-        loc.fire_cover === "Cover Opted with Terrorism"
-          ? ("Cover Opted with Terrorism" as const)
-          : ("Cover Opted without Terrorism" as const),
       building_si: loc.building_si,
       plant_machinery_si: loc.plant_machinery_si,
       furniture_si: loc.furniture_si,
@@ -59,13 +53,16 @@ function buildAditiInput(): ProposalInput {
       money:
         loc.location_number === 1
           ? {
-              cover: "Cover Opted without Terrorism" as const,
+              cover: "Opted" as const,
               annual_carrying_limit: aditiFixture.money_global.annual_carrying_limit,
               single_carrying_limit: aditiFixture.money_global.single_carrying_limit,
               cash_in_safe: aditiFixture.money_global.cash_in_safe,
               cash_in_till: aditiFixture.money_global.cash_in_till,
             }
-          : base.money,
+          : {
+              ...base.money,
+              cover: "Not Opted" as const,
+            },
     };
   });
 
@@ -76,6 +73,12 @@ function buildAditiInput(): ProposalInput {
     hypothecation_1: "",
     hypothecation_2: "",
     hypothecation_3: "",
+    terrorism: { opted: false, scope: "" },
+    floater_cover: {
+      enabled: aditiFixture.stock_floater === "Cover Opted",
+      floater_sum_insured: 0,
+      max_sum_insured_per_location: 0,
+    },
     locations,
     sections,
   };

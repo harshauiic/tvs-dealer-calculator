@@ -16,6 +16,24 @@ export type MoneyCoverOption =
   | "Cover Opted without Terrorism"
   | "Cover Opted with Terrorism"
   | "Cover Not Opted";
+
+export type MoneyCoverToggle = "Opted" | "Not Opted";
+
+export type TerrorismScope =
+  | "Only fire cover"
+  | "Only money in transit cover"
+  | "Both fire and money in transit";
+
+export interface TerrorismCover {
+  opted: boolean;
+  scope: TerrorismScope | "";
+}
+
+export interface FloaterCover {
+  enabled: boolean;
+  floater_sum_insured: number;
+  max_sum_insured_per_location: number;
+}
 export type ClaimsHistory =
   | "Select"
   | "Nil claims in the past 3 years"
@@ -61,7 +79,7 @@ export interface PincodeRow {
 }
 
 export interface LocationMoney {
-  cover: MoneyCoverOption;
+  cover: MoneyCoverToggle;
   annual_carrying_limit: number;
   single_carrying_limit: number;
   cash_in_safe: number;
@@ -77,7 +95,6 @@ export interface LocationInput {
   insurance_company: string;
   period_of_cover: string;
   claims_history: ClaimsHistory;
-  fire_cover: FireCoverOption;
   building_si: number;
   plant_machinery_si: number;
   furniture_si: number;
@@ -88,7 +105,6 @@ export interface LocationInput {
 }
 
 export interface GlobalSections {
-  stock_floater: CoverOption;
   burglary: CoverOption;
   mbd_eei: CoverOption;
   plate_glass: CoverOption;
@@ -108,6 +124,8 @@ export interface ProposalInput {
   hypothecation_1: string;
   hypothecation_2: string;
   hypothecation_3: string;
+  terrorism: TerrorismCover;
+  floater_cover: FloaterCover;
   locations: LocationInput[];
   sections: GlobalSections;
 }
@@ -120,8 +138,22 @@ export function defaultProposalInput(): ProposalInput {
     hypothecation_1: "",
     hypothecation_2: "",
     hypothecation_3: "",
+    terrorism: defaultTerrorismCover(),
+    floater_cover: defaultFloaterCover(),
     locations: [createEmptyLocation()],
     sections: defaultGlobalSections(),
+  };
+}
+
+export function defaultTerrorismCover(): TerrorismCover {
+  return { opted: false, scope: "" };
+}
+
+export function defaultFloaterCover(): FloaterCover {
+  return {
+    enabled: false,
+    floater_sum_insured: 0,
+    max_sum_insured_per_location: 0,
   };
 }
 
@@ -136,10 +168,86 @@ export function normalizeProposalInput(
     hypothecation_1: input.hypothecation_1 ?? "",
     hypothecation_2: input.hypothecation_2 ?? "",
     hypothecation_3: input.hypothecation_3 ?? "",
-    locations: input.locations?.length
-      ? input.locations
-      : [createEmptyLocation()],
-    sections: input.sections ?? defaultGlobalSections(),
+    terrorism: normalizeTerrorismCover(input),
+    floater_cover: normalizeFloaterCover(input),
+    locations: (input.locations?.length ? input.locations : [createEmptyLocation()]).map(
+      normalizeLocationInput,
+    ),
+    sections: normalizeGlobalSections(input.sections),
+  };
+}
+
+function normalizeTerrorismCover(
+  input: Partial<ProposalInput> & { sections?: GlobalSections },
+): TerrorismCover {
+  if (input.terrorism) {
+    return {
+      opted: input.terrorism.opted ?? false,
+      scope: input.terrorism.scope ?? "",
+    };
+  }
+  return defaultTerrorismCover();
+}
+
+function normalizeFloaterCover(
+  input: Partial<ProposalInput> & { sections?: GlobalSections },
+): FloaterCover {
+  if (input.floater_cover) {
+    return {
+      enabled: input.floater_cover.enabled ?? false,
+      floater_sum_insured: input.floater_cover.floater_sum_insured ?? 0,
+      max_sum_insured_per_location:
+        input.floater_cover.max_sum_insured_per_location ?? 0,
+    };
+  }
+  const legacySections = input.sections as (GlobalSections & { stock_floater?: CoverOption }) | undefined;
+  const legacyStockFloater =
+    legacySections?.stock_floater === "Cover Opted" ||
+    (input as { stock_floater?: string }).stock_floater === "Cover Opted";
+  return {
+    ...defaultFloaterCover(),
+    enabled: legacyStockFloater,
+  };
+}
+
+function normalizeLocationInput(loc: LocationInput & { fire_cover?: FireCoverOption }): LocationInput {
+  const moneyCover =
+    loc.money?.cover === "Opted" || loc.money?.cover === "Not Opted"
+      ? loc.money.cover
+      : loc.money?.cover === "Cover Not Opted"
+        ? "Not Opted"
+        : "Opted";
+  return {
+    ...loc,
+    money: {
+      ...loc.money,
+      cover: moneyCover,
+    },
+  };
+}
+
+function normalizeGlobalSections(sections?: GlobalSections & { stock_floater?: CoverOption }): GlobalSections {
+  if (!sections) return defaultGlobalSections();
+  const { stock_floater: _removed, ...rest } = sections;
+  return {
+    ...defaultGlobalSections(),
+    ...rest,
+  };
+}
+
+export function syncSectionsWithLocations(
+  sections: GlobalSections,
+  locations: LocationInput[],
+): GlobalSections {
+  const hasPlant = locations.some((l) => l.plant_machinery_si > 0);
+  const hasNeon = locations.some((l) => l.neon_sign_si > 0);
+  const hasPlate = locations.some((l) => l.plate_glass_si > 0);
+
+  return {
+    ...sections,
+    mbd_eei: hasPlant ? sections.mbd_eei : "Cover Not Opted",
+    neon_sign: hasNeon ? sections.neon_sign : "Cover Not Opted",
+    plate_glass: hasPlate ? sections.plate_glass : "Cover Not Opted",
   };
 }
 
@@ -186,7 +294,6 @@ export function createEmptyLocation(id?: string): LocationInput {
     insurance_company: "",
     period_of_cover: "",
     claims_history: "Nil claims in the past 3 years",
-    fire_cover: "Cover Opted without Terrorism",
     building_si: 0,
     plant_machinery_si: 0,
     furniture_si: 0,
@@ -194,7 +301,7 @@ export function createEmptyLocation(id?: string): LocationInput {
     neon_sign_si: 0,
     stocks_si: 0,
     money: {
-      cover: "Cover Not Opted",
+      cover: "Not Opted",
       annual_carrying_limit: 0,
       single_carrying_limit: 0,
       cash_in_safe: 0,
@@ -205,10 +312,9 @@ export function createEmptyLocation(id?: string): LocationInput {
 
 export function defaultGlobalSections(): GlobalSections {
   return {
-    stock_floater: "Cover Not Opted",
     burglary: "Cover Opted",
-    mbd_eei: "Cover Opted",
-    plate_glass: "Cover Opted",
+    mbd_eei: "Cover Not Opted",
+    plate_glass: "Cover Not Opted",
     neon_sign: "Cover Not Opted",
     public_liability: "Cover Opted",
     fidelity: "Cover Not Opted",

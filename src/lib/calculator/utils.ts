@@ -1,4 +1,35 @@
-import type { GlobalSettings, PincodeRow, RateMasterRow } from "./types";
+import type {
+  FireCoverOption,
+  GlobalSettings,
+  MoneyCoverOption,
+  MoneyCoverToggle,
+  PincodeRow,
+  RateMasterRow,
+  TerrorismCover,
+} from "./types";
+
+export function resolveFireCover(terrorism: TerrorismCover): FireCoverOption {
+  if (!terrorism.opted) return "Cover Opted without Terrorism";
+  if (terrorism.scope === "Only money in transit cover") {
+    return "Cover Opted without Terrorism";
+  }
+  return "Cover Opted with Terrorism";
+}
+
+export function resolveMoneyCover(
+  moneyOpted: MoneyCoverToggle,
+  terrorism: TerrorismCover,
+): MoneyCoverOption {
+  if (moneyOpted === "Not Opted") return "Cover Not Opted";
+  if (!terrorism.opted) return "Cover Opted without Terrorism";
+  if (
+    terrorism.scope === "Only money in transit cover" ||
+    terrorism.scope === "Both fire and money in transit"
+  ) {
+    return "Cover Opted with Terrorism";
+  }
+  return "Cover Opted without Terrorism";
+}
 
 export function lookupEqZone(
   pincode: string,

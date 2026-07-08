@@ -9,8 +9,9 @@ import {
   generateReferenceNumber,
   lookupEqZone,
   normalizeProposalInput,
+  syncSectionsWithLocations,
 } from "../lib/calculator";
-import type { ProposalInput } from "../lib/calculator";
+import type { ProposalInput, TerrorismScope } from "../lib/calculator";
 import { saveProposal } from "../lib/supabase/client";
 import { downloadProposalPdf } from "../lib/pdf/proposalPdf";
 import { useCalculatorData } from "../hooks/useCalculatorData";
@@ -35,24 +36,55 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
   }, [input, rateMaster, pincodeMap, settings]);
 
   const addLocation = () => {
-    setInput((prev) => ({
-      ...prev,
-      locations: [...prev.locations, createEmptyLocation()],
-    }));
+    setInput((prev) => {
+      const locations = [...prev.locations, createEmptyLocation()];
+      return {
+        ...prev,
+        locations,
+        sections: syncSectionsWithLocations(prev.sections, locations),
+      };
+    });
   };
 
   const updateLocation = (index: number, updated: ProposalInput["locations"][0]) => {
+    setInput((prev) => {
+      const locations = prev.locations.map((l, i) => (i === index ? updated : l));
+      return {
+        ...prev,
+        locations,
+        sections: syncSectionsWithLocations(prev.sections, locations),
+      };
+    });
+  };
+
+  const updateFloaterCover = (enabled: boolean) => {
     setInput((prev) => ({
       ...prev,
-      locations: prev.locations.map((l, i) => (i === index ? updated : l)),
+      floater_cover: {
+        ...prev.floater_cover,
+        enabled,
+        ...(enabled
+          ? {}
+          : {
+              floater_sum_insured: 0,
+              max_sum_insured_per_location: 0,
+            }),
+      },
+      locations: enabled
+        ? prev.locations.map((loc) => ({ ...loc, stocks_si: 0 }))
+        : prev.locations,
     }));
   };
 
   const removeLocation = (index: number) => {
-    setInput((prev) => ({
-      ...prev,
-      locations: prev.locations.filter((_, i) => i !== index),
-    }));
+    setInput((prev) => {
+      const locations = prev.locations.filter((_, i) => i !== index);
+      return {
+        ...prev,
+        locations,
+        sections: syncSectionsWithLocations(prev.sections, locations),
+      };
+    });
   };
 
   const handleSave = async () => {
@@ -169,6 +201,101 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
         </div>
       </div>
 
+      <div className="card space-y-4">
+        <h2 className="section-title">Terrorism</h2>
+        <label className="inline-flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={input.terrorism.opted}
+            onChange={(e) =>
+              setInput((prev) => ({
+                ...prev,
+                terrorism: {
+                  opted: e.target.checked,
+                  scope: e.target.checked ? prev.terrorism.scope || "Only fire cover" : "",
+                },
+              }))
+            }
+          />
+          <span className="text-sm font-medium text-slate-800">Opt for terrorism</span>
+        </label>
+        {input.terrorism.opted && (
+          <div>
+            <label>Terrorism cover required for</label>
+            <select
+              value={input.terrorism.scope}
+              onChange={(e) =>
+                setInput((prev) => ({
+                  ...prev,
+                  terrorism: {
+                    ...prev.terrorism,
+                    scope: e.target.value as TerrorismScope,
+                  },
+                }))
+              }
+            >
+              <option value="Only fire cover">Only fire cover</option>
+              <option value="Only money in transit cover">
+                Only money in transit cover
+              </option>
+              <option value="Both fire and money in transit">
+                Both fire and money in transit
+              </option>
+            </select>
+          </div>
+        )}
+      </div>
+
+      <div className="card space-y-4">
+        <h2 className="section-title">Floater Cover</h2>
+        <label className="inline-flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={input.floater_cover.enabled}
+            onChange={(e) => updateFloaterCover(e.target.checked)}
+          />
+          <span className="text-sm font-medium text-slate-800">Floater cover</span>
+        </label>
+        {input.floater_cover.enabled && (
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label>Floater sum insured required</label>
+              <input
+                type="number"
+                min={0}
+                value={input.floater_cover.floater_sum_insured}
+                onChange={(e) =>
+                  setInput((prev) => ({
+                    ...prev,
+                    floater_cover: {
+                      ...prev.floater_cover,
+                      floater_sum_insured: Number(e.target.value),
+                    },
+                  }))
+                }
+              />
+            </div>
+            <div>
+              <label>Maximum sum insured per location</label>
+              <input
+                type="number"
+                min={0}
+                value={input.floater_cover.max_sum_insured_per_location}
+                onChange={(e) =>
+                  setInput((prev) => ({
+                    ...prev,
+                    floater_cover: {
+                      ...prev.floater_cover,
+                      max_sum_insured_per_location: Number(e.target.value),
+                    },
+                  }))
+                }
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold text-blue-900">Risk Locations</h2>
@@ -182,6 +309,7 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
             location={loc}
             index={index}
             eqZone={lookupEqZone(loc.pincode, pincodeMap)}
+            floaterCoverEnabled={input.floater_cover.enabled}
             onChange={(updated) => updateLocation(index, updated)}
             onRemove={() => removeLocation(index)}
             canRemove={input.locations.length > 1}
@@ -191,6 +319,7 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
 
       <GlobalSectionsForm
         sections={input.sections}
+        locations={input.locations}
         onChange={(sections) => setInput((prev) => ({ ...prev, sections }))}
       />
 
