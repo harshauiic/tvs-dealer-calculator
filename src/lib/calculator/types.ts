@@ -104,8 +104,43 @@ export interface GlobalSections {
 export interface ProposalInput {
   insured_name: string;
   communication_address: string;
+  gstin_number: string;
+  hypothecation_1: string;
+  hypothecation_2: string;
+  hypothecation_3: string;
   locations: LocationInput[];
   sections: GlobalSections;
+}
+
+export function defaultProposalInput(): ProposalInput {
+  return {
+    insured_name: "",
+    communication_address: "",
+    gstin_number: "",
+    hypothecation_1: "",
+    hypothecation_2: "",
+    hypothecation_3: "",
+    locations: [createEmptyLocation()],
+    sections: defaultGlobalSections(),
+  };
+}
+
+/** Fill missing insured-detail fields on older saved proposals. */
+export function normalizeProposalInput(
+  input: Partial<ProposalInput> & Pick<ProposalInput, "locations" | "sections">,
+): ProposalInput {
+  return {
+    ...defaultProposalInput(),
+    ...input,
+    gstin_number: input.gstin_number ?? "",
+    hypothecation_1: input.hypothecation_1 ?? "",
+    hypothecation_2: input.hypothecation_2 ?? "",
+    hypothecation_3: input.hypothecation_3 ?? "",
+    locations: input.locations?.length
+      ? input.locations
+      : [createEmptyLocation()],
+    sections: input.sections ?? defaultGlobalSections(),
+  };
 }
 
 export interface LocationResult {

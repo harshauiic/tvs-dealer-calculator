@@ -60,8 +60,24 @@ function ProposalDocument({
             <Text style={styles.value}>{input.insured_name}</Text>
           </View>
           <View style={styles.row}>
+            <Text style={styles.label}>GSTIN Number</Text>
+            <Text style={styles.value}>{input.gstin_number || "-"}</Text>
+          </View>
+          <View style={styles.row}>
             <Text style={styles.label}>Communication Address</Text>
             <Text style={styles.value}>{input.communication_address}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Hypothecation 1</Text>
+            <Text style={styles.value}>{input.hypothecation_1 || "-"}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Hypothecation 2</Text>
+            <Text style={styles.value}>{input.hypothecation_2 || "-"}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Hypothecation 3</Text>
+            <Text style={styles.value}>{input.hypothecation_3 || "-"}</Text>
           </View>
         </View>
 

@@ -3,6 +3,8 @@ export {
   OCCUPANCY_TYPES,
   createEmptyLocation,
   defaultGlobalSections,
+  defaultProposalInput,
+  normalizeProposalInput,
 } from "./types";
 export type {
   CoverOption,

@@ -5,9 +5,10 @@ import PremiumSummary from "../components/PremiumSummary";
 import {
   calcProposal,
   createEmptyLocation,
-  defaultGlobalSections,
+  defaultProposalInput,
   generateReferenceNumber,
   lookupEqZone,
+  normalizeProposalInput,
 } from "../lib/calculator";
 import type { ProposalInput } from "../lib/calculator";
 import { saveProposal } from "../lib/supabase/client";
@@ -21,13 +22,8 @@ interface Props {
 
 export default function CalculatorPage({ initialInput, initialReference }: Props) {
   const { rateMaster, settings, pincodeMap, loading, error } = useCalculatorData();
-  const [input, setInput] = useState<ProposalInput>(
-    initialInput ?? {
-      insured_name: "",
-      communication_address: "",
-      locations: [createEmptyLocation()],
-      sections: defaultGlobalSections(),
-    },
+  const [input, setInput] = useState<ProposalInput>(() =>
+    initialInput ? normalizeProposalInput(initialInput) : defaultProposalInput(),
   );
   const [reference, setReference] = useState(initialReference ?? "");
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
@@ -107,6 +103,16 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
             />
           </div>
           <div>
+            <label>GSTIN Number</label>
+            <input
+              value={input.gstin_number}
+              onChange={(e) =>
+                setInput((prev) => ({ ...prev, gstin_number: e.target.value }))
+              }
+              placeholder="e.g. 29AAAAA0000A1Z5"
+            />
+          </div>
+          <div className="md:col-span-2">
             <label>Communication Address</label>
             <textarea
               rows={2}
@@ -118,6 +124,47 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
                 }))
               }
             />
+          </div>
+        </div>
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-slate-800">Hypothecation</h3>
+          <div className="grid gap-3">
+            <div>
+              <label>Hypothecation 1</label>
+              <input
+                value={input.hypothecation_1}
+                onChange={(e) =>
+                  setInput((prev) => ({
+                    ...prev,
+                    hypothecation_1: e.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div>
+              <label>Hypothecation 2</label>
+              <input
+                value={input.hypothecation_2}
+                onChange={(e) =>
+                  setInput((prev) => ({
+                    ...prev,
+                    hypothecation_2: e.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div>
+              <label>Hypothecation 3</label>
+              <input
+                value={input.hypothecation_3}
+                onChange={(e) =>
+                  setInput((prev) => ({
+                    ...prev,
+                    hypothecation_3: e.target.value,
+                  }))
+                }
+              />
+            </div>
           </div>
         </div>
       </div>

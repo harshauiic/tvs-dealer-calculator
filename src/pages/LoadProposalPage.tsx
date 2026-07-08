@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import CalculatorPage from "./CalculatorPage";
 import { loadProposal } from "../lib/supabase/client";
-import type { ProposalInput } from "../lib/calculator";
+import { normalizeProposalInput, type ProposalInput } from "../lib/calculator";
 
 export default function LoadProposalPage() {
   const { reference: paramRef } = useParams();
@@ -29,7 +29,9 @@ export default function LoadProposalPage() {
         return;
       }
       const payload = data.payload ?? data;
-      setInitialInput(payload.input as ProposalInput);
+      setInitialInput(
+        normalizeProposalInput(payload.input as ProposalInput),
+      );
       setLoadedRef(ref);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load proposal");

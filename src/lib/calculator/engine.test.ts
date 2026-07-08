@@ -72,6 +72,10 @@ function buildAditiInput(): ProposalInput {
   return {
     insured_name: aditiFixture.insured_name,
     communication_address: aditiFixture.communication_address,
+    gstin_number: "",
+    hypothecation_1: "",
+    hypothecation_2: "",
+    hypothecation_3: "",
     locations,
     sections,
   };
