@@ -29,6 +29,18 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
   const [reference, setReference] = useState(initialReference ?? "");
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [collapsedLocations, setCollapsedLocations] = useState<Set<string>>(new Set());
+
+  const collapsible = input.locations.length >= 2;
+
+  const toggleLocationCollapse = (locationId: string) => {
+    setCollapsedLocations((prev) => {
+      const next = new Set(prev);
+      if (next.has(locationId)) next.delete(locationId);
+      else next.add(locationId);
+      return next;
+    });
+  };
 
   const result = useMemo(() => {
     if (!settings || !rateMaster.length) return null;
@@ -36,14 +48,26 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
   }, [input, rateMaster, pincodeMap, settings]);
 
   const addLocation = () => {
+    const newLocation = createEmptyLocation();
+    const previousLocations = input.locations;
+
     setInput((prev) => {
-      const locations = [...prev.locations, createEmptyLocation()];
+      const locations = [...prev.locations, newLocation];
       return {
         ...prev,
         locations,
         sections: syncSectionsWithLocations(prev.sections, locations),
       };
     });
+
+    if (previousLocations.length >= 1) {
+      setCollapsedLocations((collapsed) => {
+        const next = new Set(collapsed);
+        for (const loc of previousLocations) next.add(loc.id);
+        next.delete(newLocation.id);
+        return next;
+      });
+    }
   };
 
   const updateLocation = (index: number, updated: ProposalInput["locations"][0]) => {
@@ -77,6 +101,8 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
   };
 
   const removeLocation = (index: number) => {
+    const removedId = input.locations[index]?.id;
+
     setInput((prev) => {
       const locations = prev.locations.filter((_, i) => i !== index);
       return {
@@ -85,6 +111,14 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
         sections: syncSectionsWithLocations(prev.sections, locations),
       };
     });
+
+    if (removedId) {
+      setCollapsedLocations((collapsed) => {
+        const next = new Set(collapsed);
+        next.delete(removedId);
+        return next;
+      });
+    }
   };
 
   const handleSave = async () => {
@@ -307,6 +341,9 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
             index={index}
             eqZone={lookupEqZone(loc.pincode, pincodeMap)}
             floaterCoverEnabled={input.floater_cover.enabled}
+            collapsible={collapsible}
+            collapsed={collapsible && collapsedLocations.has(loc.id)}
+            onToggleCollapse={() => toggleLocationCollapse(loc.id)}
             onChange={(updated) => updateLocation(index, updated)}
             onRemove={() => removeLocation(index)}
             canRemove={input.locations.length > 1}

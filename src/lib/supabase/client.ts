@@ -31,13 +31,15 @@ export async function fetchGlobalSettings(): Promise<GlobalSettings> {
 }
 
 export async function fetchPincodeMap(): Promise<Map<string, number>> {
-  const cached = localStorage.getItem("tvs_pincodes_v1");
+  localStorage.removeItem("tvs_pincodes_v1");
+  const cacheKey = "tvs_pincodes_v2";
+  const cached = localStorage.getItem(cacheKey);
   if (cached) {
     try {
       const parsed = JSON.parse(cached) as PincodeRow[];
       return new Map(parsed.map((p) => [p.pincode, p.eq_zone]));
     } catch {
-      localStorage.removeItem("tvs_pincodes_v1");
+      localStorage.removeItem(cacheKey);
     }
   }
 
@@ -49,11 +51,13 @@ export async function fetchPincodeMap(): Promise<Map<string, number>> {
 
   const all: PincodeRow[] = [];
   let from = 0;
-  const pageSize = 5000;
+  // Supabase/PostgREST returns at most 1000 rows per request by default.
+  const pageSize = 1000;
   while (true) {
     const { data, error } = await supabase
       .from("pincodes")
       .select("pincode, eq_zone")
+      .order("pincode", { ascending: true })
       .range(from, from + pageSize - 1);
     if (error) throw error;
     if (!data?.length) break;
@@ -62,7 +66,7 @@ export async function fetchPincodeMap(): Promise<Map<string, number>> {
     from += pageSize;
   }
 
-  localStorage.setItem("tvs_pincodes_v1", JSON.stringify(all));
+  localStorage.setItem(cacheKey, JSON.stringify(all));
   return new Map(all.map((p) => [p.pincode, p.eq_zone]));
 }
 

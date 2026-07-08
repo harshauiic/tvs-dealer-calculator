@@ -6,6 +6,9 @@ interface Props {
   index: number;
   eqZone: number | null;
   floaterCoverEnabled: boolean;
+  collapsible: boolean;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
   onChange: (updated: LocationInput) => void;
   onRemove: () => void;
   canRemove: boolean;
@@ -25,6 +28,9 @@ export default function LocationForm({
   index,
   eqZone,
   floaterCoverEnabled,
+  collapsible,
+  collapsed,
+  onToggleCollapse,
   onChange,
   onRemove,
   canRemove,
@@ -54,15 +60,33 @@ export default function LocationForm({
 
   return (
     <div className="card space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="section-title mb-0 border-0 pb-0">Location {index + 1}</h3>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          {collapsible && (
+            <button
+              type="button"
+              className="btn-secondary shrink-0 px-2 py-1"
+              onClick={onToggleCollapse}
+              aria-expanded={!collapsed}
+              aria-label={collapsed ? `Expand location ${index + 1}` : `Collapse location ${index + 1}`}
+            >
+              {collapsed ? "+" : "−"}
+            </button>
+          )}
+          <h3 className="section-title mb-0 border-0 pb-0 truncate">
+            Location {index + 1}
+            {collapsed && location.address.trim() ? `: ${location.address}` : ""}
+          </h3>
+        </div>
         {canRemove && (
-          <button type="button" className="btn-danger" onClick={onRemove}>
+          <button type="button" className="btn-danger shrink-0" onClick={onRemove}>
             Remove
           </button>
         )}
       </div>
 
+      {!collapsed && (
+        <>
       <div className="space-y-4">
         <h4 className="subsection-title">Location Details</h4>
         <div className="space-y-4 max-w-xl">
@@ -178,30 +202,34 @@ export default function LocationForm({
       </div>
 
       <div>
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
+        <div className="money-cover-row mb-3">
           <h4 className="font-medium text-slate-800 mb-0">
             Section 8 - Money in transit (Location {index + 1})
           </h4>
-          <div className="choice-group">
-            <span className="text-sm font-medium text-slate-700">Money cover</span>
-            <label className="choice-control">
-              <input
-                type="radio"
-                name={`money-cover-${location.id}`}
-                checked={!moneyOpted}
-                onChange={() => updateMoney("cover", "Not Opted")}
-              />
-              Not Opted
-            </label>
-            <label className="choice-control">
-              <input
-                type="radio"
-                name={`money-cover-${location.id}`}
-                checked={moneyOpted}
-                onChange={() => updateMoney("cover", "Opted")}
-              />
-              Opted
-            </label>
+          <div className="money-cover-controls">
+            <span className="text-sm font-medium text-slate-700 whitespace-nowrap">
+              Money cover
+            </span>
+            <div className="choice-group">
+              <label className="choice-control">
+                <input
+                  type="radio"
+                  name={`money-cover-${location.id}`}
+                  checked={!moneyOpted}
+                  onChange={() => updateMoney("cover", "Not Opted")}
+                />
+                Not Opted
+              </label>
+              <label className="choice-control">
+                <input
+                  type="radio"
+                  name={`money-cover-${location.id}`}
+                  checked={moneyOpted}
+                  onChange={() => updateMoney("cover", "Opted")}
+                />
+                Opted
+              </label>
+            </div>
           </div>
         </div>
         <div className="grid md:grid-cols-2 gap-4">
@@ -247,6 +275,8 @@ export default function LocationForm({
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

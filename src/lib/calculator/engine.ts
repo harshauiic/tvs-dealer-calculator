@@ -39,6 +39,20 @@ function locationNonStockSI(loc: LocationInput): number {
   );
 }
 
+function isLocationStarted(loc: LocationInput): boolean {
+  return (
+    Boolean(loc.address.trim()) ||
+    loc.pincode.length > 0 ||
+    loc.building_si > 0 ||
+    loc.plant_machinery_si > 0 ||
+    loc.furniture_si > 0 ||
+    loc.plate_glass_si > 0 ||
+    loc.neon_sign_si > 0 ||
+    loc.stocks_si > 0 ||
+    loc.money.cover === "Opted"
+  );
+}
+
 function validateLocationFields(
   loc: LocationInput,
   eqZone: number | null,
@@ -180,9 +194,9 @@ export function calcProposal(
       );
       firePremium = fire.premium;
       fireRate = fire.rate;
-    } else if (fireErrors.length > 0) {
+    } else if (isLocationStarted(loc) && fireErrors.length > 0) {
       firePremium = fireErrors[0];
-    } else if (eqZone === null && loc.pincode.length === 6) {
+    } else if (isLocationStarted(loc) && eqZone === null && loc.pincode.length === 6) {
       firePremium = "Please enter correct Pincode above";
     }
 
@@ -197,14 +211,15 @@ export function calcProposal(
       fire_premium: firePremium,
       money_total_si: money.totalSI,
       money_premium: money.premium,
-      errors,
+      errors: isLocationStarted(loc) ? errors : [],
     };
   });
 
   const firstValidFire = locationResults.find((l) =>
     typeof l.fire_premium === "number",
   );
-  const gate = firstValidFire?.fire_premium ?? locationResults[0]?.fire_premium;
+  const gate: number | null =
+    typeof firstValidFire?.fire_premium === "number" ? firstValidFire.fire_premium : null;
 
   const totals = input.locations.reduce(
     (acc, loc) => ({
@@ -223,42 +238,49 @@ export function calcProposal(
       : 0;
 
   const burglaryPremium =
-    typeof gate === "number"
+    gate !== null
       ? input.sections.burglary === "Cover Not Opted"
         ? "Cover Not Opted"
         : burglarySI * (settings.burglary_rate_pct / 100)
-      : gate;
+      : input.sections.burglary === "Cover Not Opted"
+        ? "Cover Not Opted"
+        : 0;
 
   const mbdSI = input.sections.mbd_eei === "Cover Opted" ? totals.plant : 0;
   const mbdPremium =
-    typeof gate === "number"
+    gate !== null
       ? input.sections.mbd_eei === "Cover Not Opted"
         ? "Cover Not Opted"
         : (mbdSI * settings.mbd_rate_per_thousand) / 1000
-      : gate;
+      : input.sections.mbd_eei === "Cover Not Opted"
+        ? "Cover Not Opted"
+        : 0;
 
   const plateSI = input.sections.plate_glass === "Cover Opted" ? totals.plate : 0;
   const platePremium =
-    typeof gate === "number"
+    gate !== null
       ? input.sections.plate_glass === "Cover Not Opted"
         ? "Cover Not Opted"
         : plateSI * (settings.plate_glass_rate_pct / 100)
-      : gate;
+      : input.sections.plate_glass === "Cover Not Opted"
+        ? "Cover Not Opted"
+        : 0;
 
   const neonSI = input.sections.neon_sign === "Cover Opted" ? totals.neon : 0;
   const neonPremium =
-    typeof gate === "number"
+    gate !== null
       ? input.sections.neon_sign === "Cover Not Opted"
         ? "Cover Not Opted"
         : neonSI * (settings.neon_sign_rate_pct / 100)
-      : gate;
+      : input.sections.neon_sign === "Cover Not Opted"
+        ? "Cover Not Opted"
+        : 0;
 
   const publicLiabilityPremium = calcSectionPremium(
     gate,
     input.sections.public_liability,
     input.sections.public_liability_si,
     settings.public_liability_rate_pct / 100,
-    "Please enter SI",
   );
 
   const fidelityPremium = calcFidelityPremium(gate, input.sections, settings);
@@ -297,6 +319,20 @@ export function calcProposal(
       ? netPremium + gst
       : netPremium;
 
+  const proposalErrors: string[] = [];
+  if (!input.insured_name.trim()) proposalErrors.push("Please enter Insured name");
+  if (!input.communication_address.trim()) {
+    proposalErrors.push("Please enter Communication Address");
+  }
+
+  const locationErrors = locationResults.flatMap((l) =>
+    l.errors.filter(
+      (e) =>
+        e !== "Please enter Insured name" &&
+        e !== "Please enter Communication Address",
+    ),
+  );
+
   return {
     locations: locationResults,
     sections: {
@@ -315,29 +351,28 @@ export function calcProposal(
     gst,
     total_premium: totalPremium,
     referral_required: referralRequired,
-    errors: locationResults.flatMap((l) => l.errors),
+    errors: [...new Set([...proposalErrors, ...locationErrors])],
   };
 }
 
 function calcSectionPremium(
-  gate: number | string | undefined,
+  gate: number | null,
   cover: GlobalSections["burglary"],
   si: number,
   rate: number,
-  _blankMsg: string,
 ): number | string {
-  if (typeof gate !== "number") return gate ?? "Invalid input";
   if (cover === "Cover Not Opted") return "Cover Not Opted";
+  if (gate === null) return 0;
   return si * rate;
 }
 
 function calcFidelityPremium(
-  gate: number | string | undefined,
+  gate: number | null,
   sections: GlobalSections,
   settings: GlobalSettings,
 ): number | string {
-  if (typeof gate !== "number") return gate ?? "Invalid input";
   if (sections.fidelity === "Cover Not Opted") return "Cover Not Opted";
+  if (gate === null) return 0;
   if (!sections.fidelity_employees) return "Please enter no of permanent employees";
   if (!sections.fidelity_floater_si) return "Please enter Floater SI";
   if (!sections.fidelity_per_employee_limit)
