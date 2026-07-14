@@ -60,12 +60,12 @@ export function computeFireRate(
   if (underThreshold) {
     const base =
       (row.iib_rate + row.eq_rate + row.stfi_rate) *
-      (1 - settings.sookshama_discount_pct / 100);
+      (1 - row.discount_under_5cr / 100);
     return withTerrorism ? base + row.terrorism_rate : base;
   }
 
   const base =
-    row.iib_rate * (1 - settings.iib_discount_pct / 100) +
+    row.iib_rate * (1 - row.discount_iib_over_5cr / 100) +
     row.eq_rate * (1 - row.discount_eq_over_5cr / 100) +
     row.stfi_rate * (1 - row.discount_stfi_over_5cr / 100);
   return withTerrorism ? base + row.terrorism_rate : base;

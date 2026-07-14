@@ -136,6 +136,7 @@ export default function AdminPage() {
                 <th className="p-2">STFI</th>
                 <th className="p-2">Terror</th>
                 <th className="p-2">&lt;5Cr disc</th>
+                <th className="p-2">&gt;5Cr IIB discount (%)</th>
               </tr>
             </thead>
             <tbody>
@@ -143,23 +144,30 @@ export default function AdminPage() {
                 <tr key={`${row.occupancy}-${row.eq_zone}`} className="border-b">
                   <td className="p-2">{row.occupancy}</td>
                   <td className="p-2">{row.eq_zone}</td>
-                  {(["iib_rate", "eq_rate", "stfi_rate", "terrorism_rate", "discount_under_5cr"] as const).map(
-                    (field) => (
-                      <td key={field} className="p-2">
-                        <input
-                          type="number"
-                          step="0.001"
-                          className="w-20"
-                          value={row[field]}
-                          onChange={(e) => {
-                            const updated = [...rates];
-                            updated[i] = { ...row, [field]: Number(e.target.value) };
-                            setRates(updated);
-                          }}
-                        />
-                      </td>
-                    ),
-                  )}
+                  {(
+                    [
+                      "iib_rate",
+                      "eq_rate",
+                      "stfi_rate",
+                      "terrorism_rate",
+                      "discount_under_5cr",
+                      "discount_iib_over_5cr",
+                    ] as const
+                  ).map((field) => (
+                    <td key={field} className="p-2">
+                      <input
+                        type="number"
+                        step="0.001"
+                        className="w-20"
+                        value={row[field]}
+                        onChange={(e) => {
+                          const updated = [...rates];
+                          updated[i] = { ...row, [field]: Number(e.target.value) };
+                          setRates(updated);
+                        }}
+                      />
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
@@ -175,8 +183,6 @@ export default function AdminPage() {
           <h3 className="section-title">Global Settings</h3>
           {(
             [
-              ["sookshama_discount_pct", "Sookshama discount (%)"],
-              ["iib_discount_pct", "IIB discount over 5Cr (%)"],
               ["burglary_rate_pct", "Burglary rate (%)"],
               ["mbd_rate_per_thousand", "MBD rate (per thousand)"],
               ["money_without_terror_rate_pct", "Money rate without terror (%)"],
