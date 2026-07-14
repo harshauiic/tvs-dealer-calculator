@@ -1,5 +1,6 @@
 import type { LocationInput } from "../lib/calculator";
 import { OCCUPANCY_TYPES } from "../lib/calculator";
+import AmountInput from "./AmountInput";
 
 interface Props {
   location: LocationInput;
@@ -182,12 +183,10 @@ export default function LocationForm({
             return (
               <div key={key}>
                 <label>{label}</label>
-                <input
-                  type="number"
-                  min={0}
+                <AmountInput
                   value={location[key]}
                   disabled={isStocks && floaterCoverEnabled}
-                  onChange={(e) => update(key, Number(e.target.value))}
+                  onChange={(value) => update(key, value)}
                 />
               </div>
             );
@@ -235,42 +234,30 @@ export default function LocationForm({
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <label>Annual Carrying limit</label>
-            <input
-              type="number"
-              min={0}
+            <AmountInput
               value={location.money.annual_carrying_limit}
-              onChange={(e) =>
-                updateMoney("annual_carrying_limit", Number(e.target.value))
-              }
+              onChange={(value) => updateMoney("annual_carrying_limit", value)}
             />
           </div>
           <div>
             <label>Single carrying limit</label>
-            <input
-              type="number"
-              min={0}
+            <AmountInput
               value={location.money.single_carrying_limit}
-              onChange={(e) =>
-                updateMoney("single_carrying_limit", Number(e.target.value))
-              }
+              onChange={(value) => updateMoney("single_carrying_limit", value)}
             />
           </div>
           <div>
             <label>Cash in safe</label>
-            <input
-              type="number"
-              min={0}
+            <AmountInput
               value={location.money.cash_in_safe}
-              onChange={(e) => updateMoney("cash_in_safe", Number(e.target.value))}
+              onChange={(value) => updateMoney("cash_in_safe", value)}
             />
           </div>
           <div>
             <label>Cash in till</label>
-            <input
-              type="number"
-              min={0}
+            <AmountInput
               value={location.money.cash_in_till}
-              onChange={(e) => updateMoney("cash_in_till", Number(e.target.value))}
+              onChange={(value) => updateMoney("cash_in_till", value)}
             />
           </div>
         </div>

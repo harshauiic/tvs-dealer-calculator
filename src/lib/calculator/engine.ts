@@ -1,6 +1,5 @@
 import {
   computeFireRate,
-  computeFloaterContextRate,
   findRateRow,
   lookupEqZone,
   resolveFireCover,
@@ -37,6 +36,11 @@ function locationNonStockSI(loc: LocationInput): number {
     loc.plate_glass_si +
     loc.neon_sign_si
   );
+}
+
+/** SI used for under/over 5Cr rate banding when floater cover is opted. */
+function locationFloaterBandSI(loc: LocationInput, maxPerLocation: number): number {
+  return maxPerLocation + locationNonStockSI(loc);
 }
 
 function isLocationStarted(loc: LocationInput): boolean {
@@ -82,11 +86,43 @@ function validateLocation(
   return errors;
 }
 
+function validateFloaterCover(input: ProposalInput): string[] {
+  if (!input.floater_cover.enabled) return [];
+
+  const errors: string[] = [];
+  const { floater_sum_insured, max_sum_insured_per_location } = input.floater_cover;
+
+  if (!floater_sum_insured || floater_sum_insured <= 0) {
+    errors.push("Please enter Floater sum insured required");
+  }
+  if (!max_sum_insured_per_location || max_sum_insured_per_location <= 0) {
+    errors.push("Please enter Maximum sum insured per location");
+  }
+
+  if (
+    floater_sum_insured > 0 &&
+    max_sum_insured_per_location > 0 &&
+    input.locations.length > 0
+  ) {
+    const minRequired = floater_sum_insured / input.locations.length;
+    if (max_sum_insured_per_location < minRequired) {
+      const formatted = minRequired.toLocaleString("en-IN", {
+        maximumFractionDigits: 2,
+      });
+      errors.push(
+        `Enter the value greater than ${formatted} for Maximum sum insured per location`,
+      );
+    }
+  }
+
+  return errors;
+}
+
 function calcLocationFirePremium(
   loc: LocationInput,
   eqZone: number,
-  floaterMaxRate: number | null,
   stockFloater: boolean,
+  maxPerLocation: number,
   withTerrorism: boolean,
   rateMaster: RateMasterRow[],
   settings: GlobalSettings,
@@ -98,17 +134,17 @@ function calcLocationFirePremium(
   const row = findRateRow(loc.occupancy, eqZone, rateMaster);
   if (!row) return { premium: "Invalid occupancy/EQ zone", rate: null };
 
-  const totalSI = locationTotalSI(loc);
   const nonStockSI = locationNonStockSI(loc);
-  const locationRate = computeFireRate(row, totalSI, withTerrorism, settings);
+  const siForRate = stockFloater
+    ? locationFloaterBandSI(loc, maxPerLocation)
+    : locationTotalSI(loc);
+  const locationRate = computeFireRate(row, siForRate, withTerrorism, settings);
 
-  if (stockFloater && floaterMaxRate !== null) {
-    const premium =
-      (loc.stocks_si * floaterMaxRate + nonStockSI * locationRate) / 1000;
-    return { premium, rate: locationRate };
+  if (stockFloater) {
+    return { premium: (nonStockSI * locationRate) / 1000, rate: locationRate };
   }
 
-  return { premium: (totalSI * locationRate) / 1000, rate: locationRate };
+  return { premium: (siForRate * locationRate) / 1000, rate: locationRate };
 }
 
 function calcLocationMoneyPremium(
@@ -149,25 +185,10 @@ export function calcProposal(
   );
 
   const stockFloater = input.floater_cover.enabled;
-  const withFireTerrorism = resolveFireCover(input.terrorism) === "Cover Opted with Terrorism";
-
-  const floaterRates = input.locations
-    .map((loc) => {
-      const eqZone = lookupEqZone(loc.pincode, pincodes);
-      if (eqZone === null || !loc.occupancy) return null;
-      return computeFloaterContextRate(
-        loc.occupancy,
-        eqZone,
-        locationNonStockSI(loc),
-        withFireTerrorism,
-        rateMaster,
-        settings,
-      );
-    })
-    .filter((r): r is number => r !== null);
-
-  const floaterMaxRate =
-    floaterRates.length > 0 ? Math.max(...floaterRates) : null;
+  const maxPerLocation = input.floater_cover.max_sum_insured_per_location;
+  const withFireTerrorism =
+    resolveFireCover(input.terrorism) === "Cover Opted with Terrorism";
+  const floaterErrors = validateFloaterCover(input);
 
   const locationResults: LocationResult[] = input.locations.map((loc) => {
     const eqZone = lookupEqZone(loc.pincode, pincodes);
@@ -186,8 +207,8 @@ export function calcProposal(
       const fire = calcLocationFirePremium(
         loc,
         eqZone,
-        floaterMaxRate,
         stockFloater,
+        maxPerLocation,
         withFireTerrorism,
         rateMaster,
         settings,
@@ -215,11 +236,31 @@ export function calcProposal(
     };
   });
 
+  const locationRates = locationResults
+    .map((l) => l.fire_rate)
+    .filter((r): r is number => r !== null);
+  const highestLocationRate =
+    locationRates.length > 0 ? Math.max(...locationRates) : null;
+
+  let fireFloaterPremium: number | string = 0;
+  if (stockFloater) {
+    if (floaterErrors.length > 0) {
+      fireFloaterPremium = floaterErrors[0];
+    } else if (highestLocationRate !== null) {
+      fireFloaterPremium =
+        (input.floater_cover.floater_sum_insured * highestLocationRate) / 1000;
+    }
+  }
+
   const firstValidFire = locationResults.find((l) =>
     typeof l.fire_premium === "number",
   );
   const gate: number | null =
-    typeof firstValidFire?.fire_premium === "number" ? firstValidFire.fire_premium : null;
+    typeof firstValidFire?.fire_premium === "number"
+      ? firstValidFire.fire_premium
+      : typeof fireFloaterPremium === "number" && fireFloaterPremium > 0
+        ? fireFloaterPremium
+        : null;
 
   const totals = input.locations.reduce(
     (acc, loc) => ({
@@ -232,9 +273,19 @@ export function calcProposal(
     { plant: 0, furniture: 0, plate: 0, neon: 0, stocks: 0 },
   );
 
+  const floaterSIForBurglary =
+    stockFloater && floaterErrors.length === 0
+      ? input.floater_cover.floater_sum_insured
+      : 0;
+
   const burglarySI =
     input.sections.burglary === "Cover Opted"
-      ? totals.plant + totals.furniture + totals.plate + totals.neon + totals.stocks
+      ? totals.plant +
+        totals.furniture +
+        totals.plate +
+        totals.neon +
+        totals.stocks +
+        floaterSIForBurglary
       : 0;
 
   const burglaryPremium =
@@ -290,6 +341,7 @@ export function calcProposal(
 
   const allPremiums = [
     ...firePremiums,
+    ...(stockFloater ? [fireFloaterPremium] : []),
     burglaryPremium,
     mbdPremium,
     platePremium,
@@ -319,7 +371,7 @@ export function calcProposal(
       ? netPremium + gst
       : netPremium;
 
-  const proposalErrors: string[] = [];
+  const proposalErrors: string[] = [...floaterErrors];
   if (!input.insured_name.trim()) proposalErrors.push("Please enter Insured name");
   if (!input.communication_address.trim()) {
     proposalErrors.push("Please enter Communication Address");
@@ -347,6 +399,8 @@ export function calcProposal(
       public_liability_premium: publicLiabilityPremium,
       fidelity_premium: fidelityPremium,
     },
+    fire_floater_premium: stockFloater ? fireFloaterPremium : "Cover Not Opted",
+    fire_floater_rate: stockFloater ? highestLocationRate : null,
     net_premium: netPremium,
     gst,
     total_premium: totalPremium,

@@ -280,6 +280,8 @@ export interface ProposalResult {
     public_liability_premium: number | string;
     fidelity_premium: number | string;
   };
+  fire_floater_premium: number | string;
+  fire_floater_rate: number | null;
   net_premium: number | string;
   gst: number | string;
   total_premium: number | string;

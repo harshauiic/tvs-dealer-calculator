@@ -199,6 +199,9 @@ function ProposalDocument({
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Premium Summary</Text>
           {[
+            ...(result.fire_floater_premium !== "Cover Not Opted"
+              ? [["Fire - Floater", result.fire_floater_premium] as const]
+              : []),
             ["Burglary", result.sections.burglary_premium],
             ["MBD/EEI", result.sections.mbd_premium],
             ["Plate glass", result.sections.plate_glass_premium],

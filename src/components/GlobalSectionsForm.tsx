@@ -1,4 +1,5 @@
 import type { GlobalSections, LocationInput } from "../lib/calculator";
+import AmountInput from "./AmountInput";
 
 interface Props {
   sections: GlobalSections;
@@ -69,13 +70,9 @@ export default function GlobalSectionsForm({ sections, locations, onChange }: Pr
                 sections.public_liability === "Cover Opted" && (
                   <div>
                     <label>Public Liability Sum Insured</label>
-                    <input
-                      type="number"
-                      min={0}
+                    <AmountInput
                       value={sections.public_liability_si}
-                      onChange={(e) =>
-                        update("public_liability_si", Number(e.target.value))
-                      }
+                      onChange={(value) => update("public_liability_si", value)}
                     />
                   </div>
                 )}
@@ -86,34 +83,24 @@ export default function GlobalSectionsForm({ sections, locations, onChange }: Pr
                   <div className="space-y-3">
                     <div>
                       <label>No of permanent employees</label>
-                      <input
-                        type="number"
-                        min={0}
+                      <AmountInput
                         value={sections.fidelity_employees}
-                        onChange={(e) =>
-                          update("fidelity_employees", Number(e.target.value))
-                        }
+                        onChange={(value) => update("fidelity_employees", value)}
                       />
                     </div>
                     <div>
                       <label>Floater SI</label>
-                      <input
-                        type="number"
-                        min={0}
+                      <AmountInput
                         value={sections.fidelity_floater_si}
-                        onChange={(e) =>
-                          update("fidelity_floater_si", Number(e.target.value))
-                        }
+                        onChange={(value) => update("fidelity_floater_si", value)}
                       />
                     </div>
                     <div>
                       <label>Per employee limit</label>
-                      <input
-                        type="number"
-                        min={0}
+                      <AmountInput
                         value={sections.fidelity_per_employee_limit}
-                        onChange={(e) =>
-                          update("fidelity_per_employee_limit", Number(e.target.value))
+                        onChange={(value) =>
+                          update("fidelity_per_employee_limit", value)
                         }
                       />
                     </div>

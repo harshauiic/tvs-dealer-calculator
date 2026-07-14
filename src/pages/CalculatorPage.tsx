@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import AmountInput from "../components/AmountInput";
 import LocationForm from "../components/LocationForm";
 import GlobalSectionsForm from "../components/GlobalSectionsForm";
 import PremiumSummary from "../components/PremiumSummary";
@@ -290,38 +291,69 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
         {input.floater_cover.enabled && (
           <div className="space-y-4 max-w-xl">
             <div>
-              <label>Floater sum insured required</label>
-              <input
-                type="number"
-                min={0}
+              <label>
+                Floater sum insured required <span className="text-red-600">*</span>
+              </label>
+              <AmountInput
                 value={input.floater_cover.floater_sum_insured}
-                onChange={(e) =>
+                onChange={(value) =>
                   setInput((prev) => ({
                     ...prev,
                     floater_cover: {
                       ...prev.floater_cover,
-                      floater_sum_insured: Number(e.target.value),
+                      floater_sum_insured: value,
                     },
                   }))
                 }
               />
             </div>
             <div>
-              <label>Maximum sum insured per location</label>
-              <input
-                type="number"
-                min={0}
+              <label>
+                Maximum sum insured per location{" "}
+                <span className="text-red-600">*</span>
+              </label>
+              <AmountInput
                 value={input.floater_cover.max_sum_insured_per_location}
-                onChange={(e) =>
+                onChange={(value) =>
                   setInput((prev) => ({
                     ...prev,
                     floater_cover: {
                       ...prev.floater_cover,
-                      max_sum_insured_per_location: Number(e.target.value),
+                      max_sum_insured_per_location: value,
                     },
                   }))
                 }
               />
+              {input.floater_cover.floater_sum_insured > 0 &&
+                input.locations.length > 0 && (
+                  <p
+                    className={`text-xs mt-1 ${
+                      input.floater_cover.max_sum_insured_per_location > 0 &&
+                      input.floater_cover.max_sum_insured_per_location <
+                        input.floater_cover.floater_sum_insured /
+                          input.locations.length
+                        ? "text-red-600"
+                        : "text-slate-500"
+                    }`}
+                  >
+                    {(() => {
+                      const minRequired =
+                        input.floater_cover.floater_sum_insured /
+                        input.locations.length;
+                      const formatted = minRequired.toLocaleString("en-IN", {
+                        maximumFractionDigits: 2,
+                      });
+                      if (
+                        input.floater_cover.max_sum_insured_per_location > 0 &&
+                        input.floater_cover.max_sum_insured_per_location <
+                          minRequired
+                      ) {
+                        return `Enter the value greater than ${formatted}`;
+                      }
+                      return `Must be at least Floater sum insured ÷ number of locations (₹${formatted})`;
+                    })()}
+                  </p>
+                )}
             </div>
           </div>
         )}

@@ -22,6 +22,7 @@ function collectPremiumMessages(result: ProposalResult): string[] {
 
   const premiums = [
     ...result.locations.flatMap((l) => [l.fire_premium, l.money_premium]),
+    result.fire_floater_premium,
     result.sections.burglary_premium,
     result.sections.mbd_premium,
     result.sections.plate_glass_premium,
@@ -82,6 +83,12 @@ export default function PremiumSummary({ result }: Props) {
                 </tr>
               </Fragment>
             ))}
+            {result.fire_floater_premium !== "Cover Not Opted" && (
+              <tr className="border-b">
+                <td className="py-2 pr-4">Fire - Floater</td>
+                <td className="py-2">{display(result.fire_floater_premium)}</td>
+              </tr>
+            )}
             <tr className="border-b">
               <td className="py-2 pr-4">Burglary</td>
               <td className="py-2">{display(result.sections.burglary_premium)}</td>

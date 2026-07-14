@@ -148,4 +148,43 @@ describe("calcProposal", () => {
     );
     expect(result.errors).toContain("Please enter Insured name");
   });
+
+  it("adds floater SI to burglary and validates max SI per location", () => {
+    const input = buildAditiInput();
+    input.floater_cover = {
+      enabled: true,
+      floater_sum_insured: 10_000_000,
+      max_sum_insured_per_location: 1_000_000,
+    };
+    input.locations = input.locations.map((loc) => ({ ...loc, stocks_si: 0 }));
+    const pincodeMap = new Map(
+      aditiFixture.locations.map((l) => [l.pincode, Number(l.eq_zone)]),
+    );
+
+    const invalid = calcProposal(input, rateMaster, pincodeMap, settings);
+    expect(invalid.errors.some((e) => e.includes("Enter the value greater than"))).toBe(
+      true,
+    );
+
+    input.floater_cover.max_sum_insured_per_location = 2_500_000;
+    const valid = calcProposal(input, rateMaster, pincodeMap, settings);
+    const baseBurglary =
+      input.locations.reduce(
+        (sum, loc) =>
+          sum +
+          loc.plant_machinery_si +
+          loc.furniture_si +
+          loc.plate_glass_si +
+          loc.neon_sign_si +
+          loc.stocks_si,
+        0,
+      ) + 10_000_000;
+    expect(valid.sections.burglary_si).toBe(baseBurglary);
+    expect(typeof valid.fire_floater_premium).toBe("number");
+    expect(valid.fire_floater_rate).not.toBeNull();
+    expect(valid.fire_floater_premium as number).toBeCloseTo(
+      (10_000_000 * (valid.fire_floater_rate as number)) / 1000,
+      2,
+    );
+  });
 });
