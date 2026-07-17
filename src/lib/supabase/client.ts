@@ -160,12 +160,48 @@ export async function updateRateMaster(rows: RateMasterRow[]) {
   }
 }
 
-export async function updateGlobalSettings(settings: GlobalSettings) {
+export async function updateGlobalSettings(
+  settings: GlobalSettings,
+  keys?: ReadonlyArray<keyof GlobalSettings>,
+) {
   if (!supabase) throw new Error("Supabase not configured");
-  const { error } = await supabase.from("global_settings").update({
-    ...settings,
+
+  const keysToUpdate =
+    keys ??
+    ([
+      "burglary_rate_pct",
+      "mbd_rate_per_thousand",
+      "plate_glass_rate_pct",
+      "neon_sign_rate_pct",
+      "public_liability_rate_pct",
+      "fidelity_rate_pct",
+      "money_without_terror_rate_pct",
+      "money_with_terror_rate_pct",
+      "gst_rate_pct",
+      "si_threshold",
+      "floater_si_cap",
+      "max_location_si",
+      "limit_money_annual_carrying",
+      "limit_money_single_carrying",
+      "limit_money_cash_in_safe",
+      "limit_money_cash_in_till",
+      "limit_public_liability_si",
+      "limit_fidelity_employees",
+      "limit_fidelity_floater_si",
+      "limit_fidelity_per_employee",
+    ] as const);
+
+  const payload: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
-  }).eq("id", 1);
+  };
+  for (const key of keysToUpdate) {
+    payload[key] = settings[key];
+  }
+
+  const { error } = await supabase
+    .from("global_settings")
+    .update(payload)
+    .eq("id", 1);
   if (error) throw error;
 }
 
@@ -224,13 +260,7 @@ function mapSettings(row: Record<string, unknown>): GlobalSettings {
     gst_rate_pct: num("gst_rate_pct"),
     si_threshold: num("si_threshold"),
     floater_si_cap: num("floater_si_cap"),
-    max_location_si: num("max_location_si"),
-    limit_fire_building_si: num("limit_fire_building_si", 500_000_000),
-    limit_fire_plant_machinery_si: num("limit_fire_plant_machinery_si", 500_000_000),
-    limit_fire_furniture_si: num("limit_fire_furniture_si", 500_000_000),
-    limit_fire_plate_glass_si: num("limit_fire_plate_glass_si", 500_000_000),
-    limit_fire_neon_sign_si: num("limit_fire_neon_sign_si", 500_000_000),
-    limit_fire_stocks_si: num("limit_fire_stocks_si", 500_000_000),
+    max_location_si: num("max_location_si", 500_000_000),
     limit_money_annual_carrying: num("limit_money_annual_carrying", 500_000_000),
     limit_money_single_carrying: num("limit_money_single_carrying", 500_000_000),
     limit_money_cash_in_safe: num("limit_money_cash_in_safe", 500_000_000),

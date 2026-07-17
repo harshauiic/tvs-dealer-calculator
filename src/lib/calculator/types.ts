@@ -70,12 +70,6 @@ export interface GlobalSettings {
   si_threshold: number;
   floater_si_cap: number;
   max_location_si: number;
-  limit_fire_building_si: number;
-  limit_fire_plant_machinery_si: number;
-  limit_fire_furniture_si: number;
-  limit_fire_plate_glass_si: number;
-  limit_fire_neon_sign_si: number;
-  limit_fire_stocks_si: number;
   limit_money_annual_carrying: number;
   limit_money_single_carrying: number;
   limit_money_cash_in_safe: number;

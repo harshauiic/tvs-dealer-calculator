@@ -69,8 +69,6 @@ function validateLocationFields(
   }
   if (!loc.occupancy) errors.push("Select Risk description accordingly");
   if (loc.claims_history === "Select") errors.push("Select Claims detail accordingly");
-  const total = locationTotalSI(loc);
-  if (total > 500_000_000) errors.push("Location Sum Insured must be less than 50 Crores");
   return errors;
 }
 
@@ -98,27 +96,24 @@ function validateFireFieldLimits(
   loc: LocationInput,
   settings: GlobalSettings,
   locationIndex: number,
+  floaterEnabled: boolean,
+  maxSumInsuredPerLocation: number,
 ): string[] {
   const label = `Location ${locationIndex + 1}`;
-  const checks: Array<[number, number, string]> = [
-    [loc.building_si, settings.limit_fire_building_si, `${label} Building SI`],
-    [loc.plant_machinery_si, settings.limit_fire_plant_machinery_si, `${label} Plant and machinery SI`],
-    [loc.furniture_si, settings.limit_fire_furniture_si, `${label} Furniture Fixtures SI`],
-    [loc.plate_glass_si, settings.limit_fire_plate_glass_si, `${label} Plate glass SI`],
-    [loc.neon_sign_si, settings.limit_fire_neon_sign_si, `${label} Neon sign SI`],
-    [loc.stocks_si, settings.limit_fire_stocks_si, `${label} Stocks SI`],
-  ];
-  const errors: string[] = [];
-  for (const [value, limit, fieldLabel] of checks) {
-    if (value > limit) errors.push(exceedLimitMessage(fieldLabel, value, limit));
+  const fireSectionsTotal = locationTotalSI(loc);
+  const comparedTotal = floaterEnabled
+    ? fireSectionsTotal + maxSumInsuredPerLocation
+    : fireSectionsTotal;
+
+  if (comparedTotal > settings.max_location_si) {
+    const detail = floaterEnabled
+      ? `Fire SI fields (${formatLimit(fireSectionsTotal)}) + Maximum sum insured per location (${formatLimit(maxSumInsuredPerLocation)}) = ${formatLimit(comparedTotal)}`
+      : `total Fire Sum Insured (${formatLimit(comparedTotal)})`;
+    return [
+      `${label}: ${detail} exceeds maximum limit of ${formatLimit(settings.max_location_si)}`,
+    ];
   }
-  const total = locationTotalSI(loc);
-  if (total > settings.max_location_si) {
-    errors.push(
-      exceedLimitMessage(`${label} total Fire Sum Insured`, total, settings.max_location_si),
-    );
-  }
-  return errors;
+  return [];
 }
 
 function validateMoneyFieldLimits(
@@ -336,7 +331,13 @@ export function calcProposal(
       input.communication_address,
     );
     const fireErrors = validateLocationFields(loc, eqZone);
-    const fireLimitErrors = validateFireFieldLimits(loc, settings, index);
+    const fireLimitErrors = validateFireFieldLimits(
+      loc,
+      settings,
+      index,
+      stockFloater,
+      maxPerLocation,
+    );
 
     let firePremium: number | string = 0;
     let fireRate: number | null = null;

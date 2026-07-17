@@ -1,11 +1,6 @@
--- Add configurable maximum limits for proposal field validation
+-- Add configurable maximum limits for Money, Public Liability, and Fidelity.
+-- Fire total limit uses existing max_location_si.
 alter table public.global_settings
-  add column if not exists limit_fire_building_si bigint not null default 500000000,
-  add column if not exists limit_fire_plant_machinery_si bigint not null default 500000000,
-  add column if not exists limit_fire_furniture_si bigint not null default 500000000,
-  add column if not exists limit_fire_plate_glass_si bigint not null default 500000000,
-  add column if not exists limit_fire_neon_sign_si bigint not null default 500000000,
-  add column if not exists limit_fire_stocks_si bigint not null default 500000000,
   add column if not exists limit_money_annual_carrying bigint not null default 500000000,
   add column if not exists limit_money_single_carrying bigint not null default 500000000,
   add column if not exists limit_money_cash_in_safe bigint not null default 500000000,

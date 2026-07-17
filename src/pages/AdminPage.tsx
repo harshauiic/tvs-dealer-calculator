@@ -12,6 +12,26 @@ import {
 import type { GlobalSettings, RateMasterRow } from "../lib/calculator";
 import { computeFireRate } from "../lib/calculator";
 
+const RATE_SETTING_KEYS = [
+  "burglary_rate_pct",
+  "mbd_rate_per_thousand",
+  "money_without_terror_rate_pct",
+  "money_with_terror_rate_pct",
+  "gst_rate_pct",
+] as const satisfies ReadonlyArray<keyof GlobalSettings>;
+
+const LIMITATION_KEYS = [
+  "max_location_si",
+  "limit_public_liability_si",
+  "limit_fidelity_employees",
+  "limit_fidelity_floater_si",
+  "limit_fidelity_per_employee",
+  "limit_money_annual_carrying",
+  "limit_money_single_carrying",
+  "limit_money_cash_in_safe",
+  "limit_money_cash_in_till",
+] as const satisfies ReadonlyArray<keyof GlobalSettings>;
+
 export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [rates, setRates] = useState<RateMasterRow[]>([]);
@@ -77,12 +97,22 @@ export default function AdminPage() {
   const handleSaveSettings = async () => {
     if (!settings) return;
     try {
-      await updateGlobalSettings(settings);
+      await updateGlobalSettings(settings, RATE_SETTING_KEYS);
       const recomputed = recomputeRates(rates, settings);
       setRates(recomputed);
       setStatus("Settings updated successfully");
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Failed to update settings");
+    }
+  };
+
+  const handleSaveLimitations = async () => {
+    if (!settings) return;
+    try {
+      await updateGlobalSettings(settings, LIMITATION_KEYS);
+      setStatus("Limitations updated successfully");
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Failed to update limitations");
     }
   };
 
@@ -222,15 +252,7 @@ export default function AdminPage() {
             [
               [
                 "Section 1 - Fire Sum Insured",
-                [
-                  ["limit_fire_building_si", "Building SI"],
-                  ["limit_fire_plant_machinery_si", "Plant and machinery SI"],
-                  ["limit_fire_furniture_si", "Furniture Fixtures SI"],
-                  ["limit_fire_plate_glass_si", "Plate glass SI"],
-                  ["limit_fire_neon_sign_si", "Neon sign SI"],
-                  ["limit_fire_stocks_si", "Stocks SI"],
-                  ["max_location_si", "Total Fire Sum Insured (per location)"],
-                ],
+                [["max_location_si", "Total Fire Sum Insured (per location)"]],
               ],
               [
                 "Section 6 - Public Liability",
@@ -257,6 +279,13 @@ export default function AdminPage() {
           ).map(([sectionTitle, fields]) => (
             <div key={sectionTitle} className="space-y-3">
               <h4 className="text-sm font-semibold text-slate-800">{sectionTitle}</h4>
+              {sectionTitle === "Section 1 - Fire Sum Insured" && (
+                <p className="text-xs text-slate-500">
+                  Without floater: total of all Fire SI fields at a location must not exceed
+                  this value. With floater: Fire SI fields + Maximum sum insured per location
+                  must not exceed this value.
+                </p>
+              )}
               {fields.map(([key, label]) => (
                 <div key={key}>
                   <label>{label}</label>
@@ -277,7 +306,7 @@ export default function AdminPage() {
             </div>
           ))}
 
-          <button type="button" className="btn-primary" onClick={handleSaveSettings}>
+          <button type="button" className="btn-primary" onClick={handleSaveLimitations}>
             Save Limitations
           </button>
         </div>
