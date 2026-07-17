@@ -12,5 +12,19 @@
   "gst_rate_pct": 18,
   "si_threshold": 50000000,
   "floater_si_cap": 500000000,
-  "max_location_si": 500000000
+  "max_location_si": 500000000,
+  "limit_fire_building_si": 500000000,
+  "limit_fire_plant_machinery_si": 500000000,
+  "limit_fire_furniture_si": 500000000,
+  "limit_fire_plate_glass_si": 500000000,
+  "limit_fire_neon_sign_si": 500000000,
+  "limit_fire_stocks_si": 500000000,
+  "limit_money_annual_carrying": 500000000,
+  "limit_money_single_carrying": 500000000,
+  "limit_money_cash_in_safe": 500000000,
+  "limit_money_cash_in_till": 500000000,
+  "limit_public_liability_si": 500000000,
+  "limit_fidelity_employees": 100000,
+  "limit_fidelity_floater_si": 500000000,
+  "limit_fidelity_per_employee": 500000000
 }

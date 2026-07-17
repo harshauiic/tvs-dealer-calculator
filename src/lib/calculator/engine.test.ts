@@ -81,6 +81,7 @@ function buildAditiInput(): ProposalInput {
     },
     locations,
     sections,
+    remarks: "",
   };
 }
 

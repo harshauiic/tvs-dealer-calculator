@@ -207,20 +207,37 @@ function mapRateRow(row: Record<string, unknown>): RateMasterRow {
 }
 
 function mapSettings(row: Record<string, unknown>): GlobalSettings {
+  const num = (key: string, fallback = 0) =>
+    row[key] === undefined || row[key] === null ? fallback : Number(row[key]);
+
   return {
-    sookshama_discount_pct: Number(row.sookshama_discount_pct),
-    iib_discount_pct: Number(row.iib_discount_pct),
-    burglary_rate_pct: Number(row.burglary_rate_pct),
-    mbd_rate_per_thousand: Number(row.mbd_rate_per_thousand),
-    plate_glass_rate_pct: Number(row.plate_glass_rate_pct),
-    neon_sign_rate_pct: Number(row.neon_sign_rate_pct),
-    public_liability_rate_pct: Number(row.public_liability_rate_pct),
-    fidelity_rate_pct: Number(row.fidelity_rate_pct),
-    money_without_terror_rate_pct: Number(row.money_without_terror_rate_pct),
-    money_with_terror_rate_pct: Number(row.money_with_terror_rate_pct),
-    gst_rate_pct: Number(row.gst_rate_pct),
-    si_threshold: Number(row.si_threshold),
-    floater_si_cap: Number(row.floater_si_cap),
-    max_location_si: Number(row.max_location_si),
+    sookshama_discount_pct: num("sookshama_discount_pct"),
+    iib_discount_pct: num("iib_discount_pct"),
+    burglary_rate_pct: num("burglary_rate_pct"),
+    mbd_rate_per_thousand: num("mbd_rate_per_thousand"),
+    plate_glass_rate_pct: num("plate_glass_rate_pct"),
+    neon_sign_rate_pct: num("neon_sign_rate_pct"),
+    public_liability_rate_pct: num("public_liability_rate_pct"),
+    fidelity_rate_pct: num("fidelity_rate_pct"),
+    money_without_terror_rate_pct: num("money_without_terror_rate_pct"),
+    money_with_terror_rate_pct: num("money_with_terror_rate_pct"),
+    gst_rate_pct: num("gst_rate_pct"),
+    si_threshold: num("si_threshold"),
+    floater_si_cap: num("floater_si_cap"),
+    max_location_si: num("max_location_si"),
+    limit_fire_building_si: num("limit_fire_building_si", 500_000_000),
+    limit_fire_plant_machinery_si: num("limit_fire_plant_machinery_si", 500_000_000),
+    limit_fire_furniture_si: num("limit_fire_furniture_si", 500_000_000),
+    limit_fire_plate_glass_si: num("limit_fire_plate_glass_si", 500_000_000),
+    limit_fire_neon_sign_si: num("limit_fire_neon_sign_si", 500_000_000),
+    limit_fire_stocks_si: num("limit_fire_stocks_si", 500_000_000),
+    limit_money_annual_carrying: num("limit_money_annual_carrying", 500_000_000),
+    limit_money_single_carrying: num("limit_money_single_carrying", 500_000_000),
+    limit_money_cash_in_safe: num("limit_money_cash_in_safe", 500_000_000),
+    limit_money_cash_in_till: num("limit_money_cash_in_till", 500_000_000),
+    limit_public_liability_si: num("limit_public_liability_si", 500_000_000),
+    limit_fidelity_employees: num("limit_fidelity_employees", 100_000),
+    limit_fidelity_floater_si: num("limit_fidelity_floater_si", 500_000_000),
+    limit_fidelity_per_employee: num("limit_fidelity_per_employee", 500_000_000),
   };
 }

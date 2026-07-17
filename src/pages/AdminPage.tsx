@@ -20,7 +20,9 @@ export default function AdminPage() {
     Array<{ reference_number: string; insured_name: string; created_at: string }>
   >([]);
   const [status, setStatus] = useState<string | null>(null);
-  const [tab, setTab] = useState<"rates" | "settings" | "proposals">("rates");
+  const [tab, setTab] = useState<"rates" | "settings" | "limitations" | "proposals">(
+    "rates",
+  );
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -102,8 +104,8 @@ export default function AdminPage() {
         </button>
       </div>
 
-      <div className="flex gap-2">
-        {(["rates", "settings", "proposals"] as const).map((t) => (
+      <div className="flex gap-2 flex-wrap">
+        {(["rates", "settings", "limitations", "proposals"] as const).map((t) => (
           <button
             key={t}
             type="button"
@@ -204,6 +206,79 @@ export default function AdminPage() {
           ))}
           <button type="button" className="btn-primary" onClick={handleSaveSettings}>
             Save Settings
+          </button>
+        </div>
+      )}
+
+      {tab === "limitations" && settings && (
+        <div className="card space-y-6 max-w-2xl">
+          <h3 className="section-title">Limitations</h3>
+          <p className="text-sm text-slate-600">
+            Configure maximum allowed values. Entered values above these limits will show an
+            error with the configured maximum.
+          </p>
+
+          {(
+            [
+              [
+                "Section 1 - Fire Sum Insured",
+                [
+                  ["limit_fire_building_si", "Building SI"],
+                  ["limit_fire_plant_machinery_si", "Plant and machinery SI"],
+                  ["limit_fire_furniture_si", "Furniture Fixtures SI"],
+                  ["limit_fire_plate_glass_si", "Plate glass SI"],
+                  ["limit_fire_neon_sign_si", "Neon sign SI"],
+                  ["limit_fire_stocks_si", "Stocks SI"],
+                  ["max_location_si", "Total Fire Sum Insured (per location)"],
+                ],
+              ],
+              [
+                "Section 6 - Public Liability",
+                [["limit_public_liability_si", "Public Liability Sum Insured"]],
+              ],
+              [
+                "Section 7 - Fidelity",
+                [
+                  ["limit_fidelity_employees", "No of permanent employees"],
+                  ["limit_fidelity_floater_si", "Floater SI"],
+                  ["limit_fidelity_per_employee", "Per employee limit"],
+                ],
+              ],
+              [
+                "Section 8 - Money in transit",
+                [
+                  ["limit_money_annual_carrying", "Annual Carrying limit"],
+                  ["limit_money_single_carrying", "Single carrying limit"],
+                  ["limit_money_cash_in_safe", "Cash in safe"],
+                  ["limit_money_cash_in_till", "Cash in till"],
+                ],
+              ],
+            ] as const
+          ).map(([sectionTitle, fields]) => (
+            <div key={sectionTitle} className="space-y-3">
+              <h4 className="text-sm font-semibold text-slate-800">{sectionTitle}</h4>
+              {fields.map(([key, label]) => (
+                <div key={key}>
+                  <label>{label}</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={settings[key] === 0 ? "" : String(settings[key])}
+                    onChange={(e) => {
+                      const cleaned = e.target.value.replace(/[^\d]/g, "");
+                      setSettings({
+                        ...settings,
+                        [key]: cleaned === "" ? 0 : Number(cleaned),
+                      });
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          ))}
+
+          <button type="button" className="btn-primary" onClick={handleSaveSettings}>
+            Save Limitations
           </button>
         </div>
       )}

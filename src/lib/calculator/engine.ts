@@ -86,6 +86,126 @@ function validateLocation(
   return errors;
 }
 
+function formatLimit(value: number): string {
+  return value.toLocaleString("en-IN");
+}
+
+function exceedLimitMessage(fieldLabel: string, value: number, limit: number): string {
+  return `${fieldLabel} exceeds maximum limit of ${formatLimit(limit)} (entered ${formatLimit(value)})`;
+}
+
+function validateFireFieldLimits(
+  loc: LocationInput,
+  settings: GlobalSettings,
+  locationIndex: number,
+): string[] {
+  const label = `Location ${locationIndex + 1}`;
+  const checks: Array<[number, number, string]> = [
+    [loc.building_si, settings.limit_fire_building_si, `${label} Building SI`],
+    [loc.plant_machinery_si, settings.limit_fire_plant_machinery_si, `${label} Plant and machinery SI`],
+    [loc.furniture_si, settings.limit_fire_furniture_si, `${label} Furniture Fixtures SI`],
+    [loc.plate_glass_si, settings.limit_fire_plate_glass_si, `${label} Plate glass SI`],
+    [loc.neon_sign_si, settings.limit_fire_neon_sign_si, `${label} Neon sign SI`],
+    [loc.stocks_si, settings.limit_fire_stocks_si, `${label} Stocks SI`],
+  ];
+  const errors: string[] = [];
+  for (const [value, limit, fieldLabel] of checks) {
+    if (value > limit) errors.push(exceedLimitMessage(fieldLabel, value, limit));
+  }
+  const total = locationTotalSI(loc);
+  if (total > settings.max_location_si) {
+    errors.push(
+      exceedLimitMessage(`${label} total Fire Sum Insured`, total, settings.max_location_si),
+    );
+  }
+  return errors;
+}
+
+function validateMoneyFieldLimits(
+  loc: LocationInput,
+  settings: GlobalSettings,
+  locationIndex: number,
+): string[] {
+  if (loc.money.cover !== "Opted") return [];
+  const label = `Location ${locationIndex + 1}`;
+  const money = loc.money;
+  const errors: string[] = [];
+  const checks: Array<[number, number, string]> = [
+    [money.annual_carrying_limit, settings.limit_money_annual_carrying, `${label} Annual Carrying limit`],
+    [money.single_carrying_limit, settings.limit_money_single_carrying, `${label} Single carrying limit`],
+    [money.cash_in_safe, settings.limit_money_cash_in_safe, `${label} Cash in safe`],
+    [money.cash_in_till, settings.limit_money_cash_in_till, `${label} Cash in till`],
+  ];
+  for (const [value, limit, fieldLabel] of checks) {
+    if (value > limit) errors.push(exceedLimitMessage(fieldLabel, value, limit));
+  }
+  if (
+    money.single_carrying_limit > 0 &&
+    money.annual_carrying_limit > 0 &&
+    money.single_carrying_limit >= money.annual_carrying_limit
+  ) {
+    errors.push(
+      `${label}: Single carrying limit should be less than Annual Carrying limit`,
+    );
+  }
+  return errors;
+}
+
+function validateSectionLimits(
+  input: ProposalInput,
+  settings: GlobalSettings,
+): string[] {
+  const errors: string[] = [];
+  if (input.sections.public_liability === "Cover Opted") {
+    if (input.sections.public_liability_si > settings.limit_public_liability_si) {
+      errors.push(
+        exceedLimitMessage(
+          "Public Liability Sum Insured",
+          input.sections.public_liability_si,
+          settings.limit_public_liability_si,
+        ),
+      );
+    }
+  }
+  if (input.sections.fidelity === "Cover Opted") {
+    if (input.sections.fidelity_employees > settings.limit_fidelity_employees) {
+      errors.push(
+        exceedLimitMessage(
+          "No of permanent employees",
+          input.sections.fidelity_employees,
+          settings.limit_fidelity_employees,
+        ),
+      );
+    }
+    if (input.sections.fidelity_floater_si > settings.limit_fidelity_floater_si) {
+      errors.push(
+        exceedLimitMessage(
+          "Fidelity Floater SI",
+          input.sections.fidelity_floater_si,
+          settings.limit_fidelity_floater_si,
+        ),
+      );
+    }
+    if (input.sections.fidelity_per_employee_limit > settings.limit_fidelity_per_employee) {
+      errors.push(
+        exceedLimitMessage(
+          "Per employee limit",
+          input.sections.fidelity_per_employee_limit,
+          settings.limit_fidelity_per_employee,
+        ),
+      );
+    }
+    if (
+      input.sections.fidelity_per_employee_limit > 0 &&
+      input.sections.fidelity_floater_si > 0 &&
+      input.sections.fidelity_per_employee_limit >= input.sections.fidelity_floater_si
+    ) {
+      errors.push("Per employee limit should be less than Floater SI");
+    }
+  }
+  return errors;
+}
+
 function validateFloaterCover(input: ProposalInput): string[] {
   if (!input.floater_cover.enabled) return [];
 
@@ -151,6 +271,7 @@ function calcLocationMoneyPremium(
   loc: LocationInput,
   settings: GlobalSettings,
   terrorism: ProposalInput["terrorism"],
+  locationIndex: number,
 ): { totalSI: number; premium: number | string } {
   const money = loc.money;
   const effectiveCover = resolveMoneyCover(money.cover, terrorism);
@@ -162,6 +283,21 @@ function calcLocationMoneyPremium(
   }
   if (!money.single_carrying_limit && money.single_carrying_limit !== 0) {
     return { totalSI: 0, premium: "Please enter Single carrying limit" };
+  }
+  if (
+    money.single_carrying_limit > 0 &&
+    money.annual_carrying_limit > 0 &&
+    money.single_carrying_limit >= money.annual_carrying_limit
+  ) {
+    return {
+      totalSI: 0,
+      premium: `Location ${locationIndex + 1}: Single carrying limit should be less than Annual Carrying limit`,
+    };
+  }
+
+  const limitErrors = validateMoneyFieldLimits(loc, settings, locationIndex);
+  if (limitErrors.length > 0) {
+    return { totalSI: 0, premium: limitErrors[0] };
   }
 
   const totalSI =
@@ -189,8 +325,9 @@ export function calcProposal(
   const withFireTerrorism =
     resolveFireCover(input.terrorism) === "Cover Opted with Terrorism";
   const floaterErrors = validateFloaterCover(input);
+  const sectionLimitErrors = validateSectionLimits(input, settings);
 
-  const locationResults: LocationResult[] = input.locations.map((loc) => {
+  const locationResults: LocationResult[] = input.locations.map((loc, index) => {
     const eqZone = lookupEqZone(loc.pincode, pincodes);
     const errors = validateLocation(
       loc,
@@ -199,11 +336,14 @@ export function calcProposal(
       input.communication_address,
     );
     const fireErrors = validateLocationFields(loc, eqZone);
+    const fireLimitErrors = validateFireFieldLimits(loc, settings, index);
 
     let firePremium: number | string = 0;
     let fireRate: number | null = null;
 
-    if (fireErrors.length === 0 && eqZone !== null) {
+    if (fireLimitErrors.length > 0) {
+      firePremium = fireLimitErrors[0];
+    } else if (fireErrors.length === 0 && eqZone !== null) {
       const fire = calcLocationFirePremium(
         loc,
         eqZone,
@@ -221,7 +361,7 @@ export function calcProposal(
       firePremium = "Please enter correct Pincode above";
     }
 
-    const money = calcLocationMoneyPremium(loc, settings, input.terrorism);
+    const money = calcLocationMoneyPremium(loc, settings, input.terrorism, index);
 
     return {
       id: loc.id,
@@ -232,7 +372,9 @@ export function calcProposal(
       fire_premium: firePremium,
       money_total_si: money.totalSI,
       money_premium: money.premium,
-      errors: isLocationStarted(loc) ? errors : [],
+      errors: isLocationStarted(loc)
+        ? [...errors, ...fireLimitErrors, ...validateMoneyFieldLimits(loc, settings, index)]
+        : [],
     };
   });
 
@@ -327,14 +469,23 @@ export function calcProposal(
         ? "Cover Not Opted"
         : 0;
 
-  const publicLiabilityPremium = calcSectionPremium(
-    gate,
-    input.sections.public_liability,
-    input.sections.public_liability_si,
-    settings.public_liability_rate_pct / 100,
-  );
+  const publicLiabilityPremium =
+    sectionLimitErrors.find((e) => e.startsWith("Public Liability")) ??
+    calcSectionPremium(
+      gate,
+      input.sections.public_liability,
+      input.sections.public_liability_si,
+      settings.public_liability_rate_pct / 100,
+    );
 
-  const fidelityPremium = calcFidelityPremium(gate, input.sections, settings);
+  const fidelityPremium =
+    sectionLimitErrors.find(
+      (e) =>
+        e.startsWith("Fidelity") ||
+        e.startsWith("No of permanent") ||
+        e.startsWith("Per employee") ||
+        e.includes("Floater SI"),
+    ) ?? calcFidelityPremium(gate, input.sections, settings);
 
   const firePremiums = locationResults.map((l) => l.fire_premium);
   const moneyPremiums = locationResults.map((l) => l.money_premium);
@@ -371,7 +522,10 @@ export function calcProposal(
       ? netPremium + gst
       : netPremium;
 
-  const proposalErrors: string[] = [...floaterErrors];
+  const proposalErrors: string[] = [
+    ...floaterErrors,
+    ...sectionLimitErrors,
+  ];
   if (!input.insured_name.trim()) proposalErrors.push("Please enter Insured name");
   if (!input.communication_address.trim()) {
     proposalErrors.push("Please enter Communication Address");
@@ -396,9 +550,18 @@ export function calcProposal(
       plate_glass_premium: platePremium,
       neon_sign_si: neonSI,
       neon_sign_premium: neonPremium,
+      public_liability_si:
+        input.sections.public_liability === "Cover Opted"
+          ? input.sections.public_liability_si
+          : 0,
       public_liability_premium: publicLiabilityPremium,
+      fidelity_si:
+        input.sections.fidelity === "Cover Opted"
+          ? input.sections.fidelity_floater_si
+          : 0,
       fidelity_premium: fidelityPremium,
     },
+    fire_floater_si: stockFloater ? input.floater_cover.floater_sum_insured : 0,
     fire_floater_premium: stockFloater ? fireFloaterPremium : "Cover Not Opted",
     fire_floater_rate: stockFloater ? highestLocationRate : null,
     net_premium: netPremium,
@@ -431,5 +594,12 @@ function calcFidelityPremium(
   if (!sections.fidelity_floater_si) return "Please enter Floater SI";
   if (!sections.fidelity_per_employee_limit)
     return "Please enter Per employee limit";
+  if (
+    sections.fidelity_per_employee_limit > 0 &&
+    sections.fidelity_floater_si > 0 &&
+    sections.fidelity_per_employee_limit >= sections.fidelity_floater_si
+  ) {
+    return "Per employee limit should be less than Floater SI";
+  }
   return sections.fidelity_floater_si * (settings.fidelity_rate_pct / 100);
 }

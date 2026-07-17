@@ -70,6 +70,20 @@ export interface GlobalSettings {
   si_threshold: number;
   floater_si_cap: number;
   max_location_si: number;
+  limit_fire_building_si: number;
+  limit_fire_plant_machinery_si: number;
+  limit_fire_furniture_si: number;
+  limit_fire_plate_glass_si: number;
+  limit_fire_neon_sign_si: number;
+  limit_fire_stocks_si: number;
+  limit_money_annual_carrying: number;
+  limit_money_single_carrying: number;
+  limit_money_cash_in_safe: number;
+  limit_money_cash_in_till: number;
+  limit_public_liability_si: number;
+  limit_fidelity_employees: number;
+  limit_fidelity_floater_si: number;
+  limit_fidelity_per_employee: number;
 }
 
 export interface PincodeRow {
@@ -127,6 +141,7 @@ export interface ProposalInput {
   floater_cover: FloaterCover;
   locations: LocationInput[];
   sections: GlobalSections;
+  remarks: string;
 }
 
 export function defaultProposalInput(): ProposalInput {
@@ -141,6 +156,7 @@ export function defaultProposalInput(): ProposalInput {
     floater_cover: defaultFloaterCover(),
     locations: [createEmptyLocation()],
     sections: defaultGlobalSections(),
+    remarks: "",
   };
 }
 
@@ -173,6 +189,7 @@ export function normalizeProposalInput(
       normalizeLocationInput,
     ),
     sections: normalizeGlobalSections(input.sections),
+    remarks: input.remarks ?? "",
   };
 }
 
@@ -277,9 +294,12 @@ export interface ProposalResult {
     plate_glass_premium: number | string;
     neon_sign_si: number;
     neon_sign_premium: number | string;
+    public_liability_si: number;
     public_liability_premium: number | string;
+    fidelity_si: number;
     fidelity_premium: number | string;
   };
+  fire_floater_si: number;
   fire_floater_premium: number | string;
   fire_floater_rate: number | null;
   net_premium: number | string;
