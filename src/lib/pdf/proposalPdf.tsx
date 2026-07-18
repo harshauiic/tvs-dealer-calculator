@@ -12,10 +12,10 @@ import type { ProposalInput, ProposalResult } from "../calculator";
 const styles = StyleSheet.create({
   page: { padding: 32, fontSize: 9, fontFamily: "Helvetica", color: "#111" },
   logoWrap: {
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: 8,
   },
-  logo: { width: 180, height: 90, objectFit: "contain" },
+  logo: { width: 280, height: 56, objectFit: "contain" },
   title: { fontSize: 12, fontWeight: "bold", marginBottom: 4, textAlign: "center" },
   subtitle: { fontSize: 8, marginBottom: 12, textAlign: "center", color: "#555" },
   section: {
@@ -62,8 +62,8 @@ const styles = StyleSheet.create({
   colSection: { width: "46%" },
   colSI: { width: "27%", textAlign: "right" },
   colPrem: { width: "27%", textAlign: "right" },
-  descCol: { width: "60%" },
-  amountCol: { width: "40%", textAlign: "right" },
+  descCol: { width: "42%", color: "#444" },
+  amountCol: { width: "58%" },
   totalRow: { flexDirection: "row", marginTop: 4 },
   totalLabel: { width: "70%", fontWeight: "bold", fontSize: 10 },
   totalValue: { width: "30%", textAlign: "right", fontWeight: "bold", fontSize: 10 },
@@ -141,14 +141,14 @@ function collectNotes(result: ProposalResult): string[] {
 function buildSummaryRows(result: ProposalResult) {
   const rows = [
     ...result.locations.map((loc, i) => ({
-      section: `Fire - Location ${i + 1}`,
+      section: `Section 1 - Fire - Location ${i + 1}`,
       si: loc.total_si,
       premium: loc.fire_premium,
     })),
     ...(result.fire_floater_premium !== "Cover Not Opted"
       ? [
           {
-            section: "Fire - Floater",
+            section: "Section 1 - Fire - Floater",
             si: result.fire_floater_si,
             premium: result.fire_floater_premium,
           },
@@ -185,12 +185,31 @@ function buildSummaryRows(result: ProposalResult) {
       premium: result.sections.fidelity_premium,
     },
     ...result.locations.map((loc, i) => ({
-      section: `Money - Location ${i + 1}`,
+      section: `Section 8 - Money - Location ${i + 1}`,
       si: loc.money_total_si,
       premium: loc.money_premium,
     })),
   ];
   return rows.filter((row) => row.premium !== "Cover Not Opted");
+}
+
+function coverWithApplicability(
+  cover: string,
+  applicability: string | null,
+): string {
+  if (cover !== "Cover Opted" || !applicability) return cover;
+  return `${cover} - ${applicability}`;
+}
+
+function locationNumbersWhere(
+  locations: ProposalInput["locations"],
+  predicate: (loc: ProposalInput["locations"][number]) => boolean,
+): string {
+  const nums = locations
+    .map((loc, i) => (predicate(loc) ? i + 1 : null))
+    .filter((n): n is number => n !== null);
+  if (nums.length === 0) return "Applicable to locations where the respective field is filled";
+  return `Applicable to Location${nums.length > 1 ? "s" : ""} ${nums.join(", ")} where the respective field is filled`;
 }
 
 function PolicyAppendix() {
@@ -423,13 +442,21 @@ function ProposalDocument({
             </View>
             {(
               [
-                ["Building", loc.building_si],
-                ["Plant & Machinery", loc.plant_machinery_si],
-                ["Furniture", loc.furniture_si],
-                ["Plate glass", loc.plate_glass_si],
-                ["Neon sign", loc.neon_sign_si],
-                ["Stocks", loc.stocks_si],
-                ["Total Fire SI", result.locations[i]?.total_si ?? 0],
+                ["Building", formatAmount(loc.building_si)],
+                ["Plant & Machinery", formatAmount(loc.plant_machinery_si)],
+                ["Furniture", formatAmount(loc.furniture_si)],
+                ["Plate glass", formatAmount(loc.plate_glass_si)],
+                ["Neon sign", formatAmount(loc.neon_sign_si)],
+                [
+                  "Stocks",
+                  input.floater_cover.enabled
+                    ? "As per floater"
+                    : formatAmount(loc.stocks_si),
+                ],
+                [
+                  "Total Fire SI",
+                  formatAmount(result.locations[i]?.total_si ?? 0),
+                ],
               ] as const
             ).map(([label, si]) => (
               <View key={label} style={styles.tableRow}>
@@ -447,7 +474,7 @@ function ProposalDocument({
                     label === "Total Fire SI" ? { fontWeight: "bold" } : {},
                   ]}
                 >
-                  {formatAmount(si)}
+                  {si}
                 </Text>
               </View>
             ))}
@@ -511,25 +538,67 @@ function ProposalDocument({
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Other Sections</Text>
           <View style={styles.row}>
-            <Text style={styles.label}>Burglary</Text>
-            <Text style={styles.value}>{input.sections.burglary}</Text>
+            <Text style={styles.label}>Section 2 - Burglary</Text>
+            <Text style={styles.value}>
+              {coverWithApplicability(
+                input.sections.burglary,
+                input.sections.burglary === "Cover Opted" ? "All locations" : null,
+              )}
+            </Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>MBD/EEI</Text>
-            <Text style={styles.value}>{input.sections.mbd_eei}</Text>
+            <Text style={styles.label}>Section 3 - MBD/EEI</Text>
+            <Text style={styles.value}>
+              {coverWithApplicability(
+                input.sections.mbd_eei,
+                input.sections.mbd_eei === "Cover Opted"
+                  ? locationNumbersWhere(
+                      input.locations,
+                      (loc) => loc.plant_machinery_si > 0,
+                    )
+                  : null,
+              )}
+            </Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>Plate glass</Text>
-            <Text style={styles.value}>{input.sections.plate_glass}</Text>
+            <Text style={styles.label}>Section 4 - Plate glass</Text>
+            <Text style={styles.value}>
+              {coverWithApplicability(
+                input.sections.plate_glass,
+                input.sections.plate_glass === "Cover Opted"
+                  ? locationNumbersWhere(
+                      input.locations,
+                      (loc) => loc.plate_glass_si > 0,
+                    )
+                  : null,
+              )}
+            </Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>Neon sign</Text>
-            <Text style={styles.value}>{input.sections.neon_sign}</Text>
+            <Text style={styles.label}>Section 5 - Neon sign</Text>
+            <Text style={styles.value}>
+              {coverWithApplicability(
+                input.sections.neon_sign,
+                input.sections.neon_sign === "Cover Opted"
+                  ? locationNumbersWhere(
+                      input.locations,
+                      (loc) => loc.neon_sign_si > 0,
+                    )
+                  : null,
+              )}
+            </Text>
           </View>
 
           <View style={styles.row}>
-            <Text style={styles.label}>Public Liability</Text>
-            <Text style={styles.value}>{input.sections.public_liability}</Text>
+            <Text style={styles.label}>Section 6 - Public Liability</Text>
+            <Text style={styles.value}>
+              {coverWithApplicability(
+                input.sections.public_liability,
+                input.sections.public_liability === "Cover Opted"
+                  ? "All locations"
+                  : null,
+              )}
+            </Text>
           </View>
           {input.sections.public_liability === "Cover Opted" && (
             <View style={styles.nestedBox}>
@@ -544,8 +613,13 @@ function ProposalDocument({
           )}
 
           <View style={[styles.row, { marginTop: 4 }]}>
-            <Text style={styles.label}>Fidelity</Text>
-            <Text style={styles.value}>{input.sections.fidelity}</Text>
+            <Text style={styles.label}>Section 7 - Fidelity</Text>
+            <Text style={styles.value}>
+              {coverWithApplicability(
+                input.sections.fidelity,
+                input.sections.fidelity === "Cover Opted" ? "All locations" : null,
+              )}
+            </Text>
           </View>
           {input.sections.fidelity === "Cover Opted" && (
             <View style={styles.nestedBoxGreen}>
@@ -637,7 +711,7 @@ export async function downloadProposalPdf(
   input: ProposalInput,
   result: ProposalResult,
 ) {
-  const logoPath = `${import.meta.env.BASE_URL}uiic-logo.png`;
+  const logoPath = `${import.meta.env.BASE_URL}uiic-header.png`;
   const logoResponse = await fetch(logoPath);
   const logoBlob = await logoResponse.blob();
   const logoSrc = await new Promise<string>((resolve, reject) => {

@@ -9,9 +9,21 @@ interface Props {
 
 const TOGGLE_SECTIONS = [
   ["burglary", "Section 2 - Burglary (All locations)", null],
-  ["mbd_eei", "Section 3 - MBD/EEI (All locations)", "plant"],
-  ["plate_glass", "Section 4 - Plate glass (All locations)", "plate"],
-  ["neon_sign", "Section 5 - Neon sign (All locations)", "neon"],
+  [
+    "mbd_eei",
+    "Section 3 - MBD/EEI (For Locations where Plant and machinery SI is provided in fire section)",
+    "plant",
+  ],
+  [
+    "plate_glass",
+    "Section 4 - Plate glass (For Locations where Plate glass SI is provided in fire section)",
+    "plate",
+  ],
+  [
+    "neon_sign",
+    "Section 5 - Neon sign (For Locations where Neon sign SI is provided in fire section)",
+    "neon",
+  ],
   ["public_liability", "Section 6 - Public Liability (All locations)", null],
   ["fidelity", "Section 7 - Fidelity (All locations)", null],
 ] as const;

@@ -201,9 +201,9 @@ function validateSectionLimits(
     if (
       input.sections.fidelity_per_employee_limit > 0 &&
       input.sections.fidelity_floater_si > 0 &&
-      input.sections.fidelity_per_employee_limit >= input.sections.fidelity_floater_si
+      input.sections.fidelity_per_employee_limit > input.sections.fidelity_floater_si
     ) {
-      errors.push("Per employee limit should be less than Floater SI");
+      errors.push("Per employee limit should be less than or equal to Floater SI");
     }
   }
   return errors;
@@ -220,6 +220,16 @@ function validateFloaterCover(input: ProposalInput): string[] {
   }
   if (!max_sum_insured_per_location || max_sum_insured_per_location <= 0) {
     errors.push("Please enter Maximum stock sum insured per location");
+  }
+
+  if (
+    floater_sum_insured > 0 &&
+    max_sum_insured_per_location > 0 &&
+    max_sum_insured_per_location > floater_sum_insured
+  ) {
+    errors.push(
+      "Maximum stock sum insured per location should be less than or equal to Stock floater sum insured required",
+    );
   }
 
   if (
@@ -656,9 +666,9 @@ function calcFidelityPremium(
   if (
     sections.fidelity_per_employee_limit > 0 &&
     sections.fidelity_floater_si > 0 &&
-    sections.fidelity_per_employee_limit >= sections.fidelity_floater_si
+    sections.fidelity_per_employee_limit > sections.fidelity_floater_si
   ) {
-    return "Per employee limit should be less than Floater SI";
+    return "Per employee limit should be less than or equal to Floater SI";
   }
   return sections.fidelity_floater_si * (settings.fidelity_rate_pct / 100);
 }

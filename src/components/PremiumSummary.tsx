@@ -59,7 +59,7 @@ function buildSummaryRows(result: ProposalResult): SummaryRow[] {
   result.locations.forEach((loc, i) => {
     rows.push({
       key: `fire-${loc.id}`,
-      section: `Fire - Location ${i + 1}`,
+      section: `Section 1 - Fire - Location ${i + 1}`,
       sumInsured: loc.total_si,
       premium: loc.fire_premium,
     });
@@ -68,7 +68,7 @@ function buildSummaryRows(result: ProposalResult): SummaryRow[] {
   if (result.fire_floater_premium !== "Cover Not Opted") {
     rows.push({
       key: "fire-floater",
-      section: "Fire - Floater",
+      section: "Section 1 - Fire - Floater",
       sumInsured: result.fire_floater_si,
       premium: result.fire_floater_premium,
     });
@@ -116,7 +116,7 @@ function buildSummaryRows(result: ProposalResult): SummaryRow[] {
   result.locations.forEach((loc, i) => {
     rows.push({
       key: `money-${loc.id}`,
-      section: `Money - Location ${i + 1}`,
+      section: `Section 8 - Money - Location ${i + 1}`,
       sumInsured: loc.money_total_si,
       premium: loc.money_premium,
     });
