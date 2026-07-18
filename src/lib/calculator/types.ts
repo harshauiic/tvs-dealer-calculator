@@ -101,6 +101,8 @@ export interface LocationInput {
   occupancy: OccupancyType | "";
   insurance_company: string;
   period_of_cover: string;
+  period_start: string;
+  period_end: string;
   claims_history: ClaimsHistory;
   building_si: number;
   plant_machinery_si: number;
@@ -231,8 +233,17 @@ function normalizeLocationInput(loc: LocationInput & { fire_cover?: FireCoverOpt
       : loc.money?.cover === "Cover Not Opted"
         ? "Not Opted"
         : "Opted";
+  const periodStart = loc.period_start ?? "";
+  const periodEnd = loc.period_end ?? "";
+  const legacyPeriod = loc.period_of_cover ?? "";
   return {
     ...loc,
+    period_start: periodStart,
+    period_end: periodEnd,
+    period_of_cover:
+      periodStart && periodEnd
+        ? `${periodStart} to ${periodEnd}`
+        : legacyPeriod,
     money: {
       ...loc.money,
       cover: moneyCover,
@@ -312,6 +323,8 @@ export function createEmptyLocation(id?: string): LocationInput {
     occupancy: "",
     insurance_company: "",
     period_of_cover: "",
+    period_start: "",
+    period_end: "",
     claims_history: "Nil claims in the past 3 years",
     building_si: 0,
     plant_machinery_si: 0,

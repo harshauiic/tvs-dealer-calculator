@@ -68,19 +68,27 @@ export default function GlobalSectionsForm({ sections, locations, onChange }: Pr
               {sectionKey === "public_liability" &&
                 enabled &&
                 sections.public_liability === "Cover Opted" && (
-                  <div>
-                    <label>Public Liability Sum Insured</label>
-                    <AmountInput
-                      value={sections.public_liability_si}
-                      onChange={(value) => update("public_liability_si", value)}
-                    />
+                  <div className="ml-3 border-l-4 border-blue-500 bg-blue-50 rounded-r-md p-3 space-y-2">
+                    <p className="text-xs font-semibold text-blue-800">
+                      Public Liability details
+                    </p>
+                    <div>
+                      <label>Public Liability Sum Insured</label>
+                      <AmountInput
+                        value={sections.public_liability_si}
+                        onChange={(value) => update("public_liability_si", value)}
+                      />
+                    </div>
                   </div>
                 )}
 
               {sectionKey === "fidelity" &&
                 enabled &&
                 sections.fidelity === "Cover Opted" && (
-                  <div className="space-y-3">
+                  <div className="ml-3 border-l-4 border-emerald-600 bg-emerald-50 rounded-r-md p-3 space-y-3">
+                    <p className="text-xs font-semibold text-emerald-800">
+                      Fidelity details
+                    </p>
                     <div>
                       <label>No of permanent employees</label>
                       <AmountInput

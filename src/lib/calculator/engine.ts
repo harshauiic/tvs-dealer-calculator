@@ -219,14 +219,12 @@ function validateFloaterCover(input: ProposalInput): string[] {
     max_sum_insured_per_location > 0 &&
     input.locations.length > 0
   ) {
-    const minRequired = floater_sum_insured / input.locations.length;
+    const minRequired = floater_sum_insured / input.locations.length + 1;
     if (max_sum_insured_per_location < minRequired) {
       const formatted = minRequired.toLocaleString("en-IN", {
         maximumFractionDigits: 2,
       });
-      errors.push(
-        `Enter the value greater than ${formatted} for Maximum sum insured per location`,
-      );
+      errors.push(`Enter the value greater than ${formatted}`);
     }
   }
 

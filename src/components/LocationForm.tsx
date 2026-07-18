@@ -150,10 +150,44 @@ export default function LocationForm({
           </div>
           <div>
             <label>Period of cover</label>
-            <input
-              value={location.period_of_cover}
-              onChange={(e) => update("period_of_cover", e.target.value)}
-            />
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-slate-500">Start Date</label>
+                <input
+                  type="date"
+                  value={location.period_start}
+                  onChange={(e) => {
+                    const period_start = e.target.value;
+                    onChange({
+                      ...location,
+                      period_start,
+                      period_of_cover:
+                        period_start && location.period_end
+                          ? `${period_start} to ${location.period_end}`
+                          : location.period_of_cover,
+                    });
+                  }}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500">End Date</label>
+                <input
+                  type="date"
+                  value={location.period_end}
+                  onChange={(e) => {
+                    const period_end = e.target.value;
+                    onChange({
+                      ...location,
+                      period_end,
+                      period_of_cover:
+                        location.period_start && period_end
+                          ? `${location.period_start} to ${period_end}`
+                          : location.period_of_cover,
+                    });
+                  }}
+                />
+              </div>
+            </div>
           </div>
           <div>
             <label>Claims in the past 3 years</label>

@@ -121,7 +121,7 @@ function buildSummaryRows(result: ProposalResult): SummaryRow[] {
     });
   });
 
-  return rows;
+  return rows.filter((row) => row.premium !== "Cover Not Opted");
 }
 
 export default function PremiumSummary({ result }: Props) {

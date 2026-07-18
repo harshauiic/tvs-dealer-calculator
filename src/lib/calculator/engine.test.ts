@@ -167,7 +167,8 @@ describe("calcProposal", () => {
       true,
     );
 
-    input.floater_cover.max_sum_insured_per_location = 2_500_000;
+    input.floater_cover.max_sum_insured_per_location =
+      10_000_000 / input.locations.length + 1;
     const valid = calcProposal(input, rateMaster, pincodeMap, settings);
     const baseBurglary =
       input.locations.reduce(

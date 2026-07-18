@@ -7,13 +7,11 @@ import {
   calcProposal,
   createEmptyLocation,
   defaultProposalInput,
-  generateReferenceNumber,
   lookupEqZone,
   normalizeProposalInput,
   syncSectionsWithLocations,
 } from "../lib/calculator";
 import type { ProposalInput, TerrorismScope } from "../lib/calculator";
-import { saveProposal } from "../lib/supabase/client";
 import { downloadProposalPdf } from "../lib/pdf/proposalPdf";
 import { useCalculatorData } from "../hooks/useCalculatorData";
 
@@ -27,9 +25,7 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
   const [input, setInput] = useState<ProposalInput>(() =>
     initialInput ? normalizeProposalInput(initialInput) : defaultProposalInput(),
   );
-  const [reference, setReference] = useState(initialReference ?? "");
-  const [saveStatus, setSaveStatus] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [reference] = useState(initialReference ?? "");
   const [collapsedLocations, setCollapsedLocations] = useState<Set<string>>(new Set());
 
   const collapsible = input.locations.length >= 2;
@@ -119,25 +115,6 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
         next.delete(removedId);
         return next;
       });
-    }
-  };
-
-  const handleSave = async () => {
-    if (!result || !settings) return;
-    setSaving(true);
-    setSaveStatus(null);
-    try {
-      const ref = reference || generateReferenceNumber();
-      await saveProposal(input.insured_name, ref, { input, result }, {
-        rateMaster,
-        settings,
-      });
-      setReference(ref);
-      setSaveStatus(`Proposal saved. Reference: ${ref}`);
-    } catch (err) {
-      setSaveStatus(err instanceof Error ? err.message : "Failed to save proposal");
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -278,6 +255,30 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
         )}
       </div>
 
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-blue-900">Risk Locations</h2>
+          <button type="button" className="btn-primary" onClick={addLocation}>
+            + Add Location
+          </button>
+        </div>
+        {input.locations.map((loc, index) => (
+          <LocationForm
+            key={loc.id}
+            location={loc}
+            index={index}
+            eqZone={lookupEqZone(loc.pincode, pincodeMap)}
+            floaterCoverEnabled={input.floater_cover.enabled}
+            collapsible={collapsible}
+            collapsed={collapsible && collapsedLocations.has(loc.id)}
+            onToggleCollapse={() => toggleLocationCollapse(loc.id)}
+            onChange={(updated) => updateLocation(index, updated)}
+            onRemove={() => removeLocation(index)}
+            canRemove={input.locations.length > 1}
+          />
+        ))}
+      </div>
+
       <div className="card space-y-4">
         <h2 className="section-title">Floater Cover</h2>
         <label className="choice-control">
@@ -331,7 +332,8 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
                       input.floater_cover.max_sum_insured_per_location > 0 &&
                       input.floater_cover.max_sum_insured_per_location <
                         input.floater_cover.floater_sum_insured /
-                          input.locations.length
+                          input.locations.length +
+                          1
                         ? "text-red-600"
                         : "text-slate-500"
                     }`}
@@ -339,48 +341,18 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
                     {(() => {
                       const minRequired =
                         input.floater_cover.floater_sum_insured /
-                        input.locations.length;
+                          input.locations.length +
+                        1;
                       const formatted = minRequired.toLocaleString("en-IN", {
                         maximumFractionDigits: 2,
                       });
-                      if (
-                        input.floater_cover.max_sum_insured_per_location > 0 &&
-                        input.floater_cover.max_sum_insured_per_location <
-                          minRequired
-                      ) {
-                        return `Enter the value greater than ${formatted}`;
-                      }
-                      return `Must be at least Floater sum insured ÷ number of locations (₹${formatted})`;
+                      return `Enter the value greater than ${formatted}`;
                     })()}
                   </p>
                 )}
             </div>
           </div>
         )}
-      </div>
-
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-blue-900">Risk Locations</h2>
-          <button type="button" className="btn-primary" onClick={addLocation}>
-            + Add Location
-          </button>
-        </div>
-        {input.locations.map((loc, index) => (
-          <LocationForm
-            key={loc.id}
-            location={loc}
-            index={index}
-            eqZone={lookupEqZone(loc.pincode, pincodeMap)}
-            floaterCoverEnabled={input.floater_cover.enabled}
-            collapsible={collapsible}
-            collapsed={collapsible && collapsedLocations.has(loc.id)}
-            onToggleCollapse={() => toggleLocationCollapse(loc.id)}
-            onChange={(updated) => updateLocation(index, updated)}
-            onRemove={() => removeLocation(index)}
-            canRemove={input.locations.length > 1}
-          />
-        ))}
       </div>
 
       <GlobalSectionsForm
@@ -410,26 +382,12 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
         <button
           type="button"
           className="btn-primary"
-          disabled={saving || !result}
-          onClick={handleSave}
-        >
-          {saving ? "Saving..." : "Save Proposal"}
-        </button>
-        <button
-          type="button"
-          className="btn-secondary"
           disabled={!result}
           onClick={handlePdf}
         >
           Download PDF
         </button>
       </div>
-
-      {saveStatus && (
-        <p className={`text-sm ${saveStatus.includes("saved") ? "text-green-700" : "text-red-600"}`}>
-          {saveStatus}
-        </p>
-      )}
     </div>
   );
 }

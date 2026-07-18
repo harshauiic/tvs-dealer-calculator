@@ -4,15 +4,29 @@ import {
   Text,
   View,
   StyleSheet,
+  Image,
   pdf,
 } from "@react-pdf/renderer";
 import type { ProposalInput, ProposalResult } from "../calculator";
 
 const styles = StyleSheet.create({
-  page: { padding: 36, fontSize: 9, fontFamily: "Helvetica", color: "#111" },
-  title: { fontSize: 13, fontWeight: "bold", marginBottom: 4, textAlign: "center" },
-  subtitle: { fontSize: 8, marginBottom: 14, textAlign: "center", color: "#555" },
-  section: { marginBottom: 10, paddingBottom: 6, borderBottomWidth: 0.5, borderBottomColor: "#ddd" },
+  page: { padding: 32, fontSize: 9, fontFamily: "Helvetica", color: "#111" },
+  logoWrap: {
+    backgroundColor: "#000",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+    alignItems: "center",
+  },
+  logo: { width: 320, height: 56, objectFit: "contain" },
+  title: { fontSize: 12, fontWeight: "bold", marginBottom: 4, textAlign: "center" },
+  subtitle: { fontSize: 8, marginBottom: 12, textAlign: "center", color: "#555" },
+  section: {
+    marginBottom: 10,
+    paddingBottom: 6,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#ddd",
+  },
   sectionTitle: {
     fontSize: 10,
     fontWeight: "bold",
@@ -22,6 +36,23 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", marginBottom: 2 },
   label: { width: "42%", color: "#444" },
   value: { width: "58%" },
+  nestedBox: {
+    marginTop: 4,
+    marginLeft: 8,
+    paddingLeft: 8,
+    paddingVertical: 4,
+    borderLeftWidth: 2,
+    borderLeftColor: "#2563eb",
+  },
+  nestedBoxGreen: {
+    marginTop: 4,
+    marginLeft: 8,
+    paddingLeft: 8,
+    paddingVertical: 4,
+    borderLeftWidth: 2,
+    borderLeftColor: "#059669",
+  },
+  nestedTitle: { fontSize: 8, fontWeight: "bold", marginBottom: 3, color: "#1e3a8a" },
   tableHeader: {
     flexDirection: "row",
     borderBottomWidth: 1,
@@ -49,7 +80,24 @@ const styles = StyleSheet.create({
   },
   noteTitle: { fontWeight: "bold", marginBottom: 3, color: "#9a3412" },
   noteLine: { marginBottom: 2, color: "#7c2d12" },
-  footer: { marginTop: 12, fontSize: 7, color: "#666" },
+  appendixTitle: {
+    fontSize: 11,
+    fontWeight: "bold",
+    marginBottom: 8,
+    color: "#1e3a8a",
+    textAlign: "center",
+  },
+  appendixHeader: {
+    backgroundColor: "#bfdbfe",
+    padding: 4,
+    fontWeight: "bold",
+    marginTop: 8,
+    marginBottom: 3,
+  },
+  appendixRow: { flexDirection: "row", marginBottom: 2 },
+  appendixLabel: { width: "35%", fontWeight: "bold" },
+  appendixValue: { width: "65%" },
+  footer: { marginTop: 10, fontSize: 7, color: "#666" },
 });
 
 const STATUS_MESSAGES = new Set([
@@ -90,30 +138,11 @@ function collectNotes(result: ProposalResult): string[] {
       messages.add(premium);
     }
   }
-  if (
-    typeof result.net_premium === "string" &&
-    !STATUS_MESSAGES.has(result.net_premium)
-  ) {
-    // keep notes only from section/validation messages, not duplicate totals text
-  }
   return [...messages];
 }
 
-function ProposalDocument({
-  input,
-  result,
-}: {
-  input: ProposalInput;
-  result: ProposalResult;
-}) {
-  const today = new Date().toLocaleDateString("en-IN");
-  const notes = collectNotes(result);
-
-  const summaryRows: Array<{
-    section: string;
-    si: number;
-    premium: number | string;
-  }> = [
+function buildSummaryRows(result: ProposalResult) {
+  const rows = [
     ...result.locations.map((loc, i) => ({
       section: `Fire - Location ${i + 1}`,
       si: loc.total_si,
@@ -164,10 +193,147 @@ function ProposalDocument({
       premium: loc.money_premium,
     })),
   ];
+  return rows.filter((row) => row.premium !== "Cover Not Opted");
+}
+
+function PolicyAppendix() {
+  return (
+    <View>
+      <Text style={styles.appendixTitle}>Policy Terms & Payment Details</Text>
+
+      <Text style={styles.appendixHeader}>Deductibles / Excess</Text>
+      {(
+        [
+          ["Fire Section", "5% of the claim amount subject to min. Rs. 10,000/-"],
+          ["Burglary Section", "5% of the claim amount subject to min. Rs. 5000/-"],
+          ["Money Section", "5% of the claim amount subject to min. Rs. 5000/-"],
+          [
+            "Fidelity Guarantee Section",
+            "5% of the claim amount subject to min. Rs. 10,000/-",
+          ],
+          ["Public Liability Section", "0.5% of Indemnity Limit"],
+          [
+            "",
+            "1% of Sum insured of each machine subject to minimum of Rs. 2500/-",
+          ],
+          ["EEI", "5% of the claim amount subject to min. Rs. 2500/-"],
+          ["Neon Sign", "5% of the claim amount subject to min. Rs. 5000/-"],
+          ["Plate glass", "5% of the claim amount subject to min. Rs. 5000/-"],
+        ] as const
+      ).map(([label, value], index) => (
+        <View key={`${label}-${index}`} style={styles.appendixRow}>
+          <Text style={styles.appendixLabel}>{label || " "}</Text>
+          <Text style={styles.appendixValue}>{value}</Text>
+        </View>
+      ))}
+
+      <Text style={styles.appendixHeader}>Definitions</Text>
+      {(
+        [
+          [
+            "Building",
+            "Building incl Plinth, foundation, Basement, compound Walls, Gates & other civil structure pertaining to Insured within the premises.",
+          ],
+          [
+            "Plant & Machinery",
+            "Plant & Machinery inc Service equipments, Computers, Printers and Office equipments.",
+          ],
+          [
+            "Furniture, Fixtures, Fittings and other contents",
+            "Furnitures, Fixtures, Fittings and others contents (exc equipments).",
+          ],
+          ["Plate glass", "Plate glass only."],
+          ["Neon sign", "Neon sign only."],
+          [
+            "Stocks",
+            "Stocks means all kinds of vehicles (new vehicles, service vehicles), spares and lubricants stored within the premises.",
+          ],
+        ] as const
+      ).map(([label, value]) => (
+        <View key={label} style={styles.appendixRow}>
+          <Text style={styles.appendixLabel}>{label}</Text>
+          <Text style={styles.appendixValue}>{value}</Text>
+        </View>
+      ))}
+
+      <Text style={styles.appendixHeader}>Conditions</Text>
+      <Text style={{ marginBottom: 2 }}>
+        1) Fire section: a. Sum Insured should be less than 50Crs of all Insurable assets
+        in the risk location. b. Terms and conditions as per UVUS policy.
+      </Text>
+      <Text style={{ marginBottom: 2 }}>2) Burglary: a. Theft and RSMD included.</Text>
+      <Text style={{ marginBottom: 2 }}>
+        3) Money: a. Transit from dealer place to Bank and vice versa. b. Cash carrying
+        must be done through an authorised permanent employee of Insured. c. Warranted
+        that cash in transit above 1 lacs is carried through private transport. d.
+        Warranted that keys are not kept in the shop premises after business hours & also
+        the cash lying outside is to be kept in safe after business hours (Safe means
+        heavy duty metallic lockable container). e. Transit of money should take place
+        within 50kms limit only. f. Cash Carried in either in briefcase, Boxes, Bags and
+        in any other types of carrying bags. g. Proper accounting system is available.
+      </Text>
+      <Text style={{ marginBottom: 2 }}>
+        4) Fidelity: a. Only permanent employees are covered. b. Loss of property
+        entrusted to any person other than the designated employee of the Insured is not
+        covered.
+      </Text>
+      <Text style={{ marginBottom: 2 }}>
+        5) MBD and EEI: a. All machineries and equipments are covered.
+      </Text>
+      <Text style={{ marginBottom: 4 }}>
+        All other terms and conditions as per the respective standard policies.
+      </Text>
+
+      <Text style={styles.appendixHeader}>Declaration</Text>
+      <Text style={{ marginBottom: 2 }}>I hereby declare that:</Text>
+      <Text style={{ marginBottom: 2 }}>1. All information provided by me is true.</Text>
+      <Text style={{ marginBottom: 2 }}>
+        2. There are nil claims in the past 3 years.
+      </Text>
+      <Text style={{ marginBottom: 4 }}>
+        3. We are Insuring all the assets and no selection is done.
+      </Text>
+
+      <Text style={styles.appendixHeader}>Payment details</Text>
+      {(
+        [
+          ["Beneficiary name", "United India Insurance Co Ltd"],
+          ["Account No", "200999095210013100"],
+          ["IFSC Code", "INDB0000007"],
+          ["Bank name", "IndusInd Bank Ltd"],
+          ["Branch", "Nungambakkam, Chennai"],
+          ["UTR", ""],
+          ["DATE", ""],
+        ] as const
+      ).map(([label, value]) => (
+        <View key={label} style={styles.appendixRow}>
+          <Text style={styles.appendixLabel}>{label}</Text>
+          <Text style={styles.appendixValue}>{value || "________________"}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function ProposalDocument({
+  input,
+  result,
+  logoSrc,
+}: {
+  input: ProposalInput;
+  result: ProposalResult;
+  logoSrc: string;
+}) {
+  const today = new Date().toLocaleDateString("en-IN");
+  const notes = collectNotes(result);
+  const summaryRows = buildSummaryRows(result);
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
+        <View style={styles.logoWrap}>
+          <Image src={logoSrc} style={styles.logo} />
+        </View>
         <Text style={styles.title}>TVS MOTOR DEALERS PACKAGE POLICY</Text>
         <Text style={styles.subtitle}>Proposal Date: {today}</Text>
 
@@ -213,32 +379,6 @@ function ProposalDocument({
           )}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Floater Cover</Text>
-          <View style={styles.row}>
-            <Text style={styles.label}>Floater cover required</Text>
-            <Text style={styles.value}>
-              {input.floater_cover.enabled ? "Yes" : "No"}
-            </Text>
-          </View>
-          {input.floater_cover.enabled && (
-            <>
-              <View style={styles.row}>
-                <Text style={styles.label}>Floater sum insured required</Text>
-                <Text style={styles.value}>
-                  {formatAmount(input.floater_cover.floater_sum_insured)}
-                </Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Maximum sum insured per location</Text>
-                <Text style={styles.value}>
-                  {formatAmount(input.floater_cover.max_sum_insured_per_location)}
-                </Text>
-              </View>
-            </>
-          )}
-        </View>
-
         {input.locations.map((loc, i) => (
           <View key={loc.id} style={styles.section} wrap={false}>
             <Text style={styles.sectionTitle}>Location {i + 1}</Text>
@@ -270,7 +410,11 @@ function ProposalDocument({
             </View>
             <View style={styles.row}>
               <Text style={styles.label}>Period of cover</Text>
-              <Text style={styles.value}>{loc.period_of_cover || "-"}</Text>
+              <Text style={styles.value}>
+                {loc.period_start && loc.period_end
+                  ? `${loc.period_start} to ${loc.period_end}`
+                  : loc.period_of_cover || "-"}
+              </Text>
             </View>
 
             <Text style={{ fontWeight: "bold", marginTop: 6, marginBottom: 3 }}>
@@ -288,25 +432,28 @@ function ProposalDocument({
                 ["Plate glass", loc.plate_glass_si],
                 ["Neon sign", loc.neon_sign_si],
                 ["Stocks", loc.stocks_si],
+                ["Total Fire SI", result.locations[i]?.total_si ?? 0],
               ] as const
             ).map(([label, si]) => (
               <View key={label} style={styles.tableRow}>
-                <Text style={styles.descCol}>{label}</Text>
-                <Text style={styles.amountCol}>{formatAmount(si)}</Text>
+                <Text
+                  style={[
+                    styles.descCol,
+                    label === "Total Fire SI" ? { fontWeight: "bold" } : {},
+                  ]}
+                >
+                  {label}
+                </Text>
+                <Text
+                  style={[
+                    styles.amountCol,
+                    label === "Total Fire SI" ? { fontWeight: "bold" } : {},
+                  ]}
+                >
+                  {formatAmount(si)}
+                </Text>
               </View>
             ))}
-            <View style={styles.tableRow}>
-              <Text style={[styles.descCol, { fontWeight: "bold" }]}>Total Fire SI</Text>
-              <Text style={[styles.amountCol, { fontWeight: "bold" }]}>
-                {formatAmount(result.locations[i]?.total_si ?? 0)}
-              </Text>
-            </View>
-            <View style={[styles.row, { marginTop: 3 }]}>
-              <Text style={styles.label}>Fire Premium</Text>
-              <Text style={styles.value}>
-                {displayPremium(result.locations[i]?.fire_premium ?? 0)}
-              </Text>
-            </View>
 
             <Text style={{ fontWeight: "bold", marginTop: 6, marginBottom: 3 }}>
               Section 8 - Money in transit
@@ -335,20 +482,34 @@ function ProposalDocument({
               <Text style={styles.label}>Cash in till</Text>
               <Text style={styles.value}>{formatAmount(loc.money.cash_in_till)}</Text>
             </View>
-            <View style={styles.row}>
-              <Text style={styles.label}>Money Sum Insured</Text>
-              <Text style={styles.value}>
-                {formatAmount(result.locations[i]?.money_total_si ?? 0)}
-              </Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.label}>Money Premium</Text>
-              <Text style={styles.value}>
-                {displayPremium(result.locations[i]?.money_premium ?? 0)}
-              </Text>
-            </View>
           </View>
         ))}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Floater Cover</Text>
+          <View style={styles.row}>
+            <Text style={styles.label}>Floater cover required</Text>
+            <Text style={styles.value}>
+              {input.floater_cover.enabled ? "Yes" : "No"}
+            </Text>
+          </View>
+          {input.floater_cover.enabled && (
+            <>
+              <View style={styles.row}>
+                <Text style={styles.label}>Floater sum insured required</Text>
+                <Text style={styles.value}>
+                  {formatAmount(input.floater_cover.floater_sum_insured)}
+                </Text>
+              </View>
+              <View style={styles.row}>
+                <Text style={styles.label}>Maximum sum insured per location</Text>
+                <Text style={styles.value}>
+                  {formatAmount(input.floater_cover.max_sum_insured_per_location)}
+                </Text>
+              </View>
+            </>
+          )}
+        </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Other Sections</Text>
@@ -368,24 +529,32 @@ function ProposalDocument({
             <Text style={styles.label}>Neon sign</Text>
             <Text style={styles.value}>{input.sections.neon_sign}</Text>
           </View>
+
           <View style={styles.row}>
             <Text style={styles.label}>Public Liability</Text>
             <Text style={styles.value}>{input.sections.public_liability}</Text>
           </View>
           {input.sections.public_liability === "Cover Opted" && (
-            <View style={styles.row}>
-              <Text style={styles.label}>Public Liability SI</Text>
-              <Text style={styles.value}>
-                {formatAmount(input.sections.public_liability_si)}
-              </Text>
+            <View style={styles.nestedBox}>
+              <Text style={styles.nestedTitle}>Public Liability details</Text>
+              <View style={styles.row}>
+                <Text style={styles.label}>Public Liability SI</Text>
+                <Text style={styles.value}>
+                  {formatAmount(input.sections.public_liability_si)}
+                </Text>
+              </View>
             </View>
           )}
-          <View style={styles.row}>
+
+          <View style={[styles.row, { marginTop: 4 }]}>
             <Text style={styles.label}>Fidelity</Text>
             <Text style={styles.value}>{input.sections.fidelity}</Text>
           </View>
           {input.sections.fidelity === "Cover Opted" && (
-            <>
+            <View style={styles.nestedBoxGreen}>
+              <Text style={[styles.nestedTitle, { color: "#047857" }]}>
+                Fidelity details
+              </Text>
               <View style={styles.row}>
                 <Text style={styles.label}>No of permanent employees</Text>
                 <Text style={styles.value}>
@@ -404,7 +573,7 @@ function ProposalDocument({
                   {formatAmount(input.sections.fidelity_per_employee_limit)}
                 </Text>
               </View>
-            </>
+            </View>
           )}
         </View>
 
@@ -458,17 +627,10 @@ function ProposalDocument({
             </Text>
           </View>
         </View>
+      </Page>
 
-        <View style={styles.footer}>
-          <Text>
-            Deductibles: Fire 5% min Rs. 10,000 | Burglary 5% min Rs. 5,000 | Money 5% min
-            Rs. 5,000
-          </Text>
-          <Text style={{ marginTop: 6 }}>
-            I hereby declare that all information provided is true, there are nil claims in
-            the past 3 years, and we are insuring all assets with no selection.
-          </Text>
-        </View>
+      <Page size="A4" style={styles.page}>
+        <PolicyAppendix />
       </Page>
     </Document>
   );
@@ -478,8 +640,18 @@ export async function downloadProposalPdf(
   input: ProposalInput,
   result: ProposalResult,
 ) {
+  const logoPath = `${import.meta.env.BASE_URL}uiic-logo.png`;
+  const logoResponse = await fetch(logoPath);
+  const logoBlob = await logoResponse.blob();
+  const logoSrc = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(logoBlob);
+  });
+
   const blob = await pdf(
-    <ProposalDocument input={input} result={result} />,
+    <ProposalDocument input={input} result={result} logoSrc={logoSrc} />,
   ).toBlob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
