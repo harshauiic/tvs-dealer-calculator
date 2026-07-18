@@ -9,11 +9,13 @@ export default function App() {
     <div className="min-h-screen">
       <header>
         <div className="bg-yellow-400">
-          <img
-            src={`${import.meta.env.BASE_URL}uiic-header.png`}
-            alt="United India Insurance Company Ltd."
-            className="w-full h-auto object-contain object-left block"
-          />
+          <div className="max-w-6xl mx-auto">
+            <img
+              src={`${import.meta.env.BASE_URL}uiic-header.png`}
+              alt="United India Insurance Company Ltd."
+              className="w-full max-h-16 sm:max-h-20 md:max-h-24 h-auto object-contain object-left block"
+            />
+          </div>
         </div>
         <div className="bg-white border-b border-slate-200">
           <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-4">
