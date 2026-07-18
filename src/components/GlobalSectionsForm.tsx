@@ -55,8 +55,8 @@ export default function GlobalSectionsForm({ sections, locations, onChange }: Pr
                     update(sectionKey, e.target.value as GlobalSections[typeof sectionKey])
                   }
                 >
-                  <option value="Cover Opted">Cover Opted</option>
                   <option value="Cover Not Opted">Cover Not Opted</option>
+                  <option value="Cover Opted">Cover Opted</option>
                 </select>
                 {!enabled && (
                   <p className="text-xs text-slate-500 mt-1">

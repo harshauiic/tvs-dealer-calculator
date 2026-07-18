@@ -267,17 +267,25 @@ export default function LocationForm({
         </div>
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <label>Annual Carrying limit</label>
+            <label>
+              Annual Carrying limit
+              {moneyOpted && <span className="text-red-600"> *</span>}
+            </label>
             <AmountInput
               value={location.money.annual_carrying_limit}
               onChange={(value) => updateMoney("annual_carrying_limit", value)}
+              disabled={!moneyOpted}
             />
           </div>
           <div>
-            <label>Single carrying limit</label>
+            <label>
+              Single carrying limit
+              {moneyOpted && <span className="text-red-600"> *</span>}
+            </label>
             <AmountInput
               value={location.money.single_carrying_limit}
               onChange={(value) => updateMoney("single_carrying_limit", value)}
+              disabled={!moneyOpted}
             />
           </div>
           <div>
@@ -285,6 +293,7 @@ export default function LocationForm({
             <AmountInput
               value={location.money.cash_in_safe}
               onChange={(value) => updateMoney("cash_in_safe", value)}
+              disabled={!moneyOpted}
             />
           </div>
           <div>
@@ -292,6 +301,7 @@ export default function LocationForm({
             <AmountInput
               value={location.money.cash_in_till}
               onChange={(value) => updateMoney("cash_in_till", value)}
+              disabled={!moneyOpted}
             />
           </div>
         </div>

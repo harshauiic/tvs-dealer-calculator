@@ -125,6 +125,14 @@ function validateMoneyFieldLimits(
   const label = `Location ${locationIndex + 1}`;
   const money = loc.money;
   const errors: string[] = [];
+
+  if (!money.annual_carrying_limit || money.annual_carrying_limit <= 0) {
+    errors.push(`${label}: Please enter Annual Carrying limit`);
+  }
+  if (!money.single_carrying_limit || money.single_carrying_limit <= 0) {
+    errors.push(`${label}: Please enter Single carrying limit`);
+  }
+
   const checks: Array<[number, number, string]> = [
     [money.annual_carrying_limit, settings.limit_money_annual_carrying, `${label} Annual Carrying limit`],
     [money.single_carrying_limit, settings.limit_money_single_carrying, `${label} Single carrying limit`],
@@ -208,10 +216,10 @@ function validateFloaterCover(input: ProposalInput): string[] {
   const { floater_sum_insured, max_sum_insured_per_location } = input.floater_cover;
 
   if (!floater_sum_insured || floater_sum_insured <= 0) {
-    errors.push("Please enter Floater sum insured required");
+    errors.push("Please enter Stock floater sum insured required");
   }
   if (!max_sum_insured_per_location || max_sum_insured_per_location <= 0) {
-    errors.push("Please enter Maximum sum insured per location");
+    errors.push("Please enter Maximum stock sum insured per location");
   }
 
   if (
@@ -271,10 +279,10 @@ function calcLocationMoneyPremium(
   if (effectiveCover === "Cover Not Opted") {
     return { totalSI: 0, premium: "Cover Not Opted" };
   }
-  if (!money.annual_carrying_limit && money.annual_carrying_limit !== 0) {
-    return { totalSI: 0, premium: "Please enter Annual carrying limit" };
+  if (!money.annual_carrying_limit || money.annual_carrying_limit <= 0) {
+    return { totalSI: 0, premium: "Please enter Annual Carrying limit" };
   }
-  if (!money.single_carrying_limit && money.single_carrying_limit !== 0) {
+  if (!money.single_carrying_limit || money.single_carrying_limit <= 0) {
     return { totalSI: 0, premium: "Please enter Single carrying limit" };
   }
   if (
@@ -538,6 +546,58 @@ export function calcProposal(
     ),
   );
 
+  const premiumBlockers = allPremiums.filter(
+    (p): p is string => typeof p === "string" && p !== "Cover Not Opted",
+  );
+
+  const errors = [...new Set([...proposalErrors, ...locationErrors, ...premiumBlockers])];
+
+  if (errors.length > 0) {
+    return {
+      locations: locationResults.map((l) => ({
+        ...l,
+        fire_rate: null,
+        fire_premium:
+          l.fire_premium === "Kindly refer proposal to office"
+            ? l.fire_premium
+            : 0,
+        money_total_si: 0,
+        money_premium:
+          l.money_premium === "Cover Not Opted" ? "Cover Not Opted" : 0,
+      })),
+      sections: {
+        burglary_si: 0,
+        burglary_premium:
+          input.sections.burglary === "Cover Not Opted" ? "Cover Not Opted" : 0,
+        mbd_si: 0,
+        mbd_premium:
+          input.sections.mbd_eei === "Cover Not Opted" ? "Cover Not Opted" : 0,
+        plate_glass_si: 0,
+        plate_glass_premium:
+          input.sections.plate_glass === "Cover Not Opted" ? "Cover Not Opted" : 0,
+        neon_sign_si: 0,
+        neon_sign_premium:
+          input.sections.neon_sign === "Cover Not Opted" ? "Cover Not Opted" : 0,
+        public_liability_si: 0,
+        public_liability_premium:
+          input.sections.public_liability === "Cover Not Opted"
+            ? "Cover Not Opted"
+            : 0,
+        fidelity_si: 0,
+        fidelity_premium:
+          input.sections.fidelity === "Cover Not Opted" ? "Cover Not Opted" : 0,
+      },
+      fire_floater_si: 0,
+      fire_floater_premium: stockFloater ? 0 : "Cover Not Opted",
+      fire_floater_rate: null,
+      net_premium: "Incomplete",
+      gst: "Incomplete",
+      total_premium: "Incomplete",
+      referral_required: referralRequired,
+      errors,
+    };
+  }
+
   return {
     locations: locationResults,
     sections: {
@@ -567,7 +627,7 @@ export function calcProposal(
     gst,
     total_premium: totalPremium,
     referral_required: referralRequired,
-    errors: [...new Set([...proposalErrors, ...locationErrors])],
+    errors: [],
   };
 }
 

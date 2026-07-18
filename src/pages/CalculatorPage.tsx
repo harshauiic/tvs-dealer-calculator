@@ -44,6 +44,11 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
     return calcProposal(input, rateMaster, pincodeMap, settings);
   }, [input, rateMaster, pincodeMap, settings]);
 
+  const premiumReady =
+    !!result &&
+    result.errors.length === 0 &&
+    typeof result.net_premium === "number";
+
   const addLocation = () => {
     const newLocation = createEmptyLocation();
     const previousLocations = input.locations;
@@ -119,7 +124,7 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
   };
 
   const handlePdf = async () => {
-    if (!result) return;
+    if (!result || !premiumReady) return;
     await downloadProposalPdf(input, result);
   };
 
@@ -255,30 +260,6 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
         )}
       </div>
 
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-blue-900">Risk Locations</h2>
-          <button type="button" className="btn-primary" onClick={addLocation}>
-            + Add Location
-          </button>
-        </div>
-        {input.locations.map((loc, index) => (
-          <LocationForm
-            key={loc.id}
-            location={loc}
-            index={index}
-            eqZone={lookupEqZone(loc.pincode, pincodeMap)}
-            floaterCoverEnabled={input.floater_cover.enabled}
-            collapsible={collapsible}
-            collapsed={collapsible && collapsedLocations.has(loc.id)}
-            onToggleCollapse={() => toggleLocationCollapse(loc.id)}
-            onChange={(updated) => updateLocation(index, updated)}
-            onRemove={() => removeLocation(index)}
-            canRemove={input.locations.length > 1}
-          />
-        ))}
-      </div>
-
       <div className="card space-y-4">
         <h2 className="section-title">Floater Cover</h2>
         <label className="choice-control">
@@ -293,7 +274,8 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
           <div className="space-y-4 max-w-xl">
             <div>
               <label>
-                Floater sum insured required <span className="text-red-600">*</span>
+                Stock floater sum insured required{" "}
+                <span className="text-red-600">*</span>
               </label>
               <AmountInput
                 value={input.floater_cover.floater_sum_insured}
@@ -310,7 +292,7 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
             </div>
             <div>
               <label>
-                Maximum sum insured per location{" "}
+                Maximum stock sum insured per location{" "}
                 <span className="text-red-600">*</span>
               </label>
               <AmountInput
@@ -355,6 +337,30 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
         )}
       </div>
 
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-blue-900">Risk Locations</h2>
+          <button type="button" className="btn-primary" onClick={addLocation}>
+            + Add Location
+          </button>
+        </div>
+        {input.locations.map((loc, index) => (
+          <LocationForm
+            key={loc.id}
+            location={loc}
+            index={index}
+            eqZone={lookupEqZone(loc.pincode, pincodeMap)}
+            floaterCoverEnabled={input.floater_cover.enabled}
+            collapsible={collapsible}
+            collapsed={collapsible && collapsedLocations.has(loc.id)}
+            onToggleCollapse={() => toggleLocationCollapse(loc.id)}
+            onChange={(updated) => updateLocation(index, updated)}
+            onRemove={() => removeLocation(index)}
+            canRemove={input.locations.length > 1}
+          />
+        ))}
+      </div>
+
       <GlobalSectionsForm
         sections={input.sections}
         locations={input.locations}
@@ -376,16 +382,16 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
         </div>
       </div>
 
-      {result && <PremiumSummary result={result} />}
+      {result && <PremiumSummary result={result} premiumReady={premiumReady} />}
 
       <div className="flex flex-wrap gap-3">
         <button
           type="button"
           className="btn-primary"
-          disabled={!result}
+          disabled={!premiumReady}
           onClick={handlePdf}
         >
-          Download PDF
+          Download Proposal
         </button>
       </div>
     </div>

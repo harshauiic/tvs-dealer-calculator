@@ -232,7 +232,7 @@ function normalizeLocationInput(loc: LocationInput & { fire_cover?: FireCoverOpt
       ? loc.money.cover
       : loc.money?.cover === "Cover Not Opted"
         ? "Not Opted"
-        : "Opted";
+        : "Not Opted";
   const periodStart = loc.period_start ?? "";
   const periodEnd = loc.period_end ?? "";
   const legacyPeriod = loc.period_of_cover ?? "";
@@ -344,11 +344,11 @@ export function createEmptyLocation(id?: string): LocationInput {
 
 export function defaultGlobalSections(): GlobalSections {
   return {
-    burglary: "Cover Opted",
+    burglary: "Cover Not Opted",
     mbd_eei: "Cover Not Opted",
     plate_glass: "Cover Not Opted",
     neon_sign: "Cover Not Opted",
-    public_liability: "Cover Opted",
+    public_liability: "Cover Not Opted",
     fidelity: "Cover Not Opted",
     public_liability_si: 0,
     fidelity_employees: 0,

@@ -131,9 +131,11 @@ describe("calcProposal", () => {
     expect(result.locations[0].fire_premium).toBe(
       "Kindly refer proposal to office",
     );
+    expect(result.errors).toContain("Kindly refer proposal to office");
+    expect(result.net_premium).toBe("Incomplete");
   });
 
-  it("calculates location fire premium before insured details are filled", () => {
+  it("does not calculate premium when insured details are missing", () => {
     const input = buildAditiInput();
     input.insured_name = "";
     input.communication_address = "";
@@ -142,11 +144,8 @@ describe("calcProposal", () => {
     );
     const result = calcProposal(input, rateMaster, pincodeMap, settings);
 
-    expect(typeof result.locations[0].fire_premium).toBe("number");
-    expect(result.locations[0].fire_premium).toBeCloseTo(
-      aditiFixture.locations[0].fire_premium,
-      1,
-    );
+    expect(result.locations[0].fire_premium).toBe(0);
+    expect(result.net_premium).toBe("Incomplete");
     expect(result.errors).toContain("Please enter Insured name");
   });
 
@@ -166,6 +165,7 @@ describe("calcProposal", () => {
     expect(invalid.errors.some((e) => e.includes("Enter the value greater than"))).toBe(
       true,
     );
+    expect(invalid.net_premium).toBe("Incomplete");
 
     input.floater_cover.max_sum_insured_per_location =
       10_000_000 / input.locations.length + 1;
@@ -181,6 +181,7 @@ describe("calcProposal", () => {
           loc.stocks_si,
         0,
       ) + 10_000_000;
+    expect(valid.errors).toEqual([]);
     expect(valid.sections.burglary_si).toBe(baseBurglary);
     expect(typeof valid.fire_floater_premium).toBe("number");
     expect(valid.fire_floater_rate).not.toBeNull();

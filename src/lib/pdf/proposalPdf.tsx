@@ -496,13 +496,13 @@ function ProposalDocument({
           {input.floater_cover.enabled && (
             <>
               <View style={styles.row}>
-                <Text style={styles.label}>Floater sum insured required</Text>
+                <Text style={styles.label}>Stock floater sum insured required</Text>
                 <Text style={styles.value}>
                   {formatAmount(input.floater_cover.floater_sum_insured)}
                 </Text>
               </View>
               <View style={styles.row}>
-                <Text style={styles.label}>Maximum sum insured per location</Text>
+                <Text style={styles.label}>Maximum stock sum insured per location</Text>
                 <Text style={styles.value}>
                   {formatAmount(input.floater_cover.max_sum_insured_per_location)}
                 </Text>

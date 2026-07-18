@@ -3,6 +3,7 @@ import type { ProposalResult } from "../lib/calculator";
 
 interface Props {
   result: ProposalResult;
+  premiumReady?: boolean;
 }
 
 const STATUS_MESSAGES = new Set([
@@ -124,7 +125,7 @@ function buildSummaryRows(result: ProposalResult): SummaryRow[] {
   return rows.filter((row) => row.premium !== "Cover Not Opted");
 }
 
-export default function PremiumSummary({ result }: Props) {
+export default function PremiumSummary({ result, premiumReady = true }: Props) {
   const messages = collectPremiumMessages(result);
   const rows = buildSummaryRows(result);
 
@@ -146,43 +147,51 @@ export default function PremiumSummary({ result }: Props) {
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-slate-600">
-              <th className="py-2 pr-4">Section</th>
-              <th className="py-2 pr-4">Sum Insured</th>
-              <th className="py-2 pr-4">Premium</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.key} className="border-b">
-                <td className="py-2 pr-4">{row.section}</td>
-                <td className="py-2 pr-4">
-                  {displaySI(row.sumInsured, row.premium)}
-                </td>
-                <td className="py-2">{displayPremium(row.premium)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {!premiumReady ? (
+        <p className="text-sm text-slate-600">
+          Fix the errors above to calculate premium.
+        </p>
+      ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-slate-600">
+                  <th className="py-2 pr-4">Section</th>
+                  <th className="py-2 pr-4">Sum Insured</th>
+                  <th className="py-2 pr-4">Premium</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.key} className="border-b">
+                    <td className="py-2 pr-4">{row.section}</td>
+                    <td className="py-2 pr-4">
+                      {displaySI(row.sumInsured, row.premium)}
+                    </td>
+                    <td className="py-2">{displayPremium(row.premium)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-      <div className="border-t pt-4 space-y-2 text-base">
-        <div className="flex justify-between">
-          <span className="font-medium">Net Premium</span>
-          <span>{displayPremium(result.net_premium)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="font-medium">GST</span>
-          <span>{displayPremium(result.gst)}</span>
-        </div>
-        <div className="flex justify-between text-lg font-bold text-blue-900">
-          <span>Premium (inc GST)</span>
-          <span>{displayPremium(result.total_premium)}</span>
-        </div>
-      </div>
+          <div className="border-t pt-4 space-y-2 text-base">
+            <div className="flex justify-between">
+              <span className="font-medium">Net Premium</span>
+              <span>{displayPremium(result.net_premium)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="font-medium">GST</span>
+              <span>{displayPremium(result.gst)}</span>
+            </div>
+            <div className="flex justify-between text-lg font-bold text-blue-900">
+              <span>Premium (inc GST)</span>
+              <span>{displayPremium(result.total_premium)}</span>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
