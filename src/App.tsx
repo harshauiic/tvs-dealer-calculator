@@ -7,29 +7,31 @@ import LoadProposalPage from "./pages/LoadProposalPage";
 export default function App() {
   return (
     <div className="min-h-screen">
-      <header className="bg-yellow-400 border-b border-yellow-500">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <div className="min-w-0">
-            <img
-              src={`${import.meta.env.BASE_URL}uiic-logo.png`}
-              alt="United India Insurance Co. Ltd."
-              className="h-16 sm:h-20 w-auto max-w-[min(100%,280px)] object-contain bg-white rounded-sm"
-            />
-            <p className="mt-1 text-sm sm:text-base font-semibold text-slate-900">
+      <header>
+        <div className="bg-yellow-400">
+          <img
+            src={`${import.meta.env.BASE_URL}uiic-header.png`}
+            alt="United India Insurance Company Ltd."
+            className="w-full h-auto object-contain object-left block"
+          />
+        </div>
+        <div className="bg-white border-b border-slate-200">
+          <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-4">
+            <p className="text-sm sm:text-base font-semibold text-slate-900 min-w-0">
               TVS Dealer Package Proposal
             </p>
+            <nav className="flex gap-3 sm:gap-4 text-sm text-blue-900 font-medium shrink-0">
+              <Link to="/" className="hover:text-blue-700">
+                Calculator
+              </Link>
+              <Link to="/load" className="hover:text-blue-700">
+                Load Proposal
+              </Link>
+              <Link to="/admin" className="hover:text-blue-700">
+                Admin
+              </Link>
+            </nav>
           </div>
-          <nav className="flex gap-3 text-sm text-slate-900 font-medium shrink-0">
-            <Link to="/" className="hover:text-blue-800">
-              Calculator
-            </Link>
-            <Link to="/load" className="hover:text-blue-800">
-              Load Proposal
-            </Link>
-            <Link to="/admin" className="hover:text-blue-800">
-              Admin
-            </Link>
-          </nav>
         </div>
       </header>
       <main className="max-w-6xl mx-auto px-4 py-6">
