@@ -13,7 +13,7 @@ export default function App() {
             <img
               src={`${import.meta.env.BASE_URL}uiic-logo.png`}
               alt="United India Insurance Co. Ltd."
-              className="h-12 sm:h-14 w-auto max-w-[min(100%,420px)] object-contain"
+              className="h-16 sm:h-20 w-auto max-w-[min(100%,280px)] object-contain bg-white rounded-sm"
             />
             <p className="mt-1 text-sm sm:text-base font-semibold text-slate-900">
               TVS Dealer Package Proposal

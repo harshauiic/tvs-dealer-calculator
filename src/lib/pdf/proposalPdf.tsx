@@ -12,13 +12,10 @@ import type { ProposalInput, ProposalResult } from "../calculator";
 const styles = StyleSheet.create({
   page: { padding: 32, fontSize: 9, fontFamily: "Helvetica", color: "#111" },
   logoWrap: {
-    backgroundColor: "#000",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginBottom: 8,
     alignItems: "center",
+    marginBottom: 8,
   },
-  logo: { width: 320, height: 56, objectFit: "contain" },
+  logo: { width: 180, height: 90, objectFit: "contain" },
   title: { fontSize: 12, fontWeight: "bold", marginBottom: 4, textAlign: "center" },
   subtitle: { fontSize: 8, marginBottom: 12, textAlign: "center", color: "#555" },
   section: {
