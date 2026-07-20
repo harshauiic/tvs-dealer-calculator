@@ -166,7 +166,12 @@ export default function LocationForm({
         </div>
         <div className="space-y-4 max-w-xl">
           <div>
-            <label>Name of Insurance company</label>
+            <label>
+              Name of Insurance company
+              {!location.no_expiring_policy && (
+                <span className="text-red-600"> *</span>
+              )}
+            </label>
             <input
               value={location.insurance_company}
               disabled={location.no_expiring_policy}
@@ -174,10 +179,20 @@ export default function LocationForm({
             />
           </div>
           <div>
-            <label>Period of cover</label>
+            <label>
+              Period of cover
+              {!location.no_expiring_policy && (
+                <span className="text-red-600"> *</span>
+              )}
+            </label>
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-slate-500">Start Date</label>
+                <label className="text-xs text-slate-500">
+                  Start Date
+                  {!location.no_expiring_policy && (
+                    <span className="text-red-600"> *</span>
+                  )}
+                </label>
                 <input
                   type="date"
                   value={location.period_start}
@@ -196,7 +211,12 @@ export default function LocationForm({
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-500">End Date</label>
+                <label className="text-xs text-slate-500">
+                  End Date
+                  {!location.no_expiring_policy && (
+                    <span className="text-red-600"> *</span>
+                  )}
+                </label>
                 <input
                   type="date"
                   value={location.period_end}

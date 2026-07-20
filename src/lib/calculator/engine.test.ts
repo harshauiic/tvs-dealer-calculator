@@ -44,6 +44,7 @@ function buildAditiInput(): ProposalInput {
       pincode: loc.pincode,
       occupancy: loc.occupancy as ProposalInput["locations"][0]["occupancy"],
       claims_history: "Nil Claims/Circumstances in the past 3 years" as const,
+      no_expiring_policy: true,
       building_si: loc.building_si,
       plant_machinery_si: loc.plant_machinery_si,
       furniture_si: loc.furniture_si,

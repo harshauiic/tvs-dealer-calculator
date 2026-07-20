@@ -70,6 +70,17 @@ function validateLocationFields(
   }
   if (!loc.occupancy) errors.push("Select Risk description accordingly");
   if (loc.claims_history === "Select") errors.push("Select Claims detail accordingly");
+  if (!loc.no_expiring_policy) {
+    if (!loc.insurance_company.trim()) {
+      errors.push("Please enter Name of Insurance company");
+    }
+    if (!loc.period_start) {
+      errors.push("Please enter Start Date");
+    }
+    if (!loc.period_end) {
+      errors.push("Please enter End Date");
+    }
+  }
   return errors;
 }
 
