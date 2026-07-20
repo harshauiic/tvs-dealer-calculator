@@ -35,8 +35,33 @@ export interface FloaterCover {
 }
 export type ClaimsHistory =
   | "Select"
-  | "Nil claims in the past 3 years"
-  | "We have claimed in the past 3 years";
+  | "Nil Claims/Circumstances in the past 3 years"
+  | "We have claimed/There have been circumstances of claim in the past 3 years";
+
+/** Legacy claim labels still accepted from saved proposals. */
+export function isClaimedHistory(claims: string): boolean {
+  return (
+    claims === "We have claimed/There have been circumstances of claim in the past 3 years" ||
+    claims === "We have claimed in the past 3 years"
+  );
+}
+
+export function normalizeClaimsHistory(value: string | undefined | null): ClaimsHistory {
+  if (value === "Nil claims in the past 3 years") {
+    return "Nil Claims/Circumstances in the past 3 years";
+  }
+  if (value === "We have claimed in the past 3 years") {
+    return "We have claimed/There have been circumstances of claim in the past 3 years";
+  }
+  if (
+    value === "Select" ||
+    value === "Nil Claims/Circumstances in the past 3 years" ||
+    value === "We have claimed/There have been circumstances of claim in the past 3 years"
+  ) {
+    return value;
+  }
+  return "Select";
+}
 
 export interface RateMasterRow {
   occupancy: string;
@@ -99,6 +124,7 @@ export interface LocationInput {
   address: string;
   pincode: string;
   occupancy: OccupancyType | "";
+  no_expiring_policy: boolean;
   insurance_company: string;
   period_of_cover: string;
   period_start: string;
@@ -137,7 +163,6 @@ export interface ProposalInput {
   floater_cover: FloaterCover;
   locations: LocationInput[];
   sections: GlobalSections;
-  remarks: string;
 }
 
 export function defaultProposalInput(): ProposalInput {
@@ -152,7 +177,6 @@ export function defaultProposalInput(): ProposalInput {
     floater_cover: defaultFloaterCover(),
     locations: [createEmptyLocation()],
     sections: defaultGlobalSections(),
-    remarks: "",
   };
 }
 
@@ -185,7 +209,6 @@ export function normalizeProposalInput(
       normalizeLocationInput,
     ),
     sections: normalizeGlobalSections(input.sections),
-    remarks: input.remarks ?? "",
   };
 }
 
@@ -236,14 +259,19 @@ function normalizeLocationInput(loc: LocationInput & { fire_cover?: FireCoverOpt
   const periodStart = loc.period_start ?? "";
   const periodEnd = loc.period_end ?? "";
   const legacyPeriod = loc.period_of_cover ?? "";
+  const noExpiring = Boolean(loc.no_expiring_policy);
   return {
     ...loc,
-    period_start: periodStart,
-    period_end: periodEnd,
-    period_of_cover:
-      periodStart && periodEnd
+    no_expiring_policy: noExpiring,
+    insurance_company: noExpiring ? "" : loc.insurance_company ?? "",
+    period_start: noExpiring ? "" : periodStart,
+    period_end: noExpiring ? "" : periodEnd,
+    period_of_cover: noExpiring
+      ? ""
+      : periodStart && periodEnd
         ? `${periodStart} to ${periodEnd}`
         : legacyPeriod,
+    claims_history: normalizeClaimsHistory(loc.claims_history),
     money: {
       ...loc.money,
       cover: moneyCover,
@@ -322,10 +350,11 @@ export function createEmptyLocation(id?: string): LocationInput {
     pincode: "",
     occupancy: "",
     insurance_company: "",
+    no_expiring_policy: false,
     period_of_cover: "",
     period_start: "",
     period_end: "",
-    claims_history: "Nil claims in the past 3 years",
+    claims_history: "Select",
     building_si: 0,
     plant_machinery_si: 0,
     furniture_si: 0,

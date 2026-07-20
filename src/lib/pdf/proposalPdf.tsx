@@ -94,6 +94,27 @@ const styles = StyleSheet.create({
   appendixRow: { flexDirection: "row", marginBottom: 2 },
   appendixLabel: { width: "35%", fontWeight: "bold" },
   appendixValue: { width: "65%" },
+  signatureBox: {
+    marginTop: 24,
+    paddingTop: 12,
+    borderTopWidth: 0.5,
+    borderTopColor: "#ddd",
+  },
+  signatureLabel: {
+    fontSize: 10,
+    fontWeight: "bold",
+    marginBottom: 36,
+  },
+  signatureLine: {
+    marginTop: 48,
+    borderTopWidth: 1,
+    borderTopColor: "#333",
+    width: "45%",
+    alignSelf: "flex-end",
+    paddingTop: 4,
+    textAlign: "center",
+    fontSize: 8,
+  },
   footer: { marginTop: 10, fontSize: 7, color: "#666" },
 });
 
@@ -327,6 +348,11 @@ function PolicyAppendix() {
           <Text style={styles.appendixValue}>{value || "________________"}</Text>
         </View>
       ))}
+
+      <View style={styles.signatureBox} wrap={false}>
+        <Text style={styles.signatureLabel}>Signature of Insured with Seal</Text>
+        <Text style={styles.signatureLine}>Signature / Seal</Text>
+      </View>
     </View>
   );
 }
@@ -420,18 +446,29 @@ function ProposalDocument({
               <Text style={styles.label}>Claims in the past 3 years</Text>
               <Text style={styles.value}>{loc.claims_history || "-"}</Text>
             </View>
-            <View style={styles.row}>
-              <Text style={styles.label}>Insurance company</Text>
-              <Text style={styles.value}>{loc.insurance_company || "-"}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.label}>Period of cover</Text>
-              <Text style={styles.value}>
-                {loc.period_start && loc.period_end
-                  ? `${loc.period_start} to ${loc.period_end}`
-                  : loc.period_of_cover || "-"}
-              </Text>
-            </View>
+            {loc.no_expiring_policy ? (
+              <View style={styles.row}>
+                <Text style={styles.label}>Expiring policy</Text>
+                <Text style={styles.value}>
+                  There is no expiring policy for this location
+                </Text>
+              </View>
+            ) : (
+              <>
+                <View style={styles.row}>
+                  <Text style={styles.label}>Insurance company</Text>
+                  <Text style={styles.value}>{loc.insurance_company || "-"}</Text>
+                </View>
+                <View style={styles.row}>
+                  <Text style={styles.label}>Period of cover</Text>
+                  <Text style={styles.value}>
+                    {loc.period_start && loc.period_end
+                      ? `${loc.period_start} to ${loc.period_end}`
+                      : loc.period_of_cover || "-"}
+                  </Text>
+                </View>
+              </>
+            )}
 
             <Text style={{ fontWeight: "bold", marginTop: 6, marginBottom: 3 }}>
               Section 1 - Fire Sum Insured
@@ -648,16 +685,6 @@ function ProposalDocument({
           )}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Additional Remarks</Text>
-          <View style={styles.row}>
-            <Text style={styles.label}>Remarks</Text>
-            <Text style={styles.value}>
-              {input.remarks.trim() ? input.remarks.trim() : "NIL"}
-            </Text>
-          </View>
-        </View>
-
         {notes.length > 0 && (
           <View style={styles.noteBox}>
             <Text style={styles.noteTitle}>Note</Text>
@@ -698,9 +725,7 @@ function ProposalDocument({
             </Text>
           </View>
         </View>
-      </Page>
 
-      <Page size="A4" style={styles.page}>
         <PolicyAppendix />
       </Page>
     </Document>

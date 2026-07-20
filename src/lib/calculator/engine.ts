@@ -16,6 +16,7 @@ import type {
   ProposalResult,
   RateMasterRow,
 } from "./types";
+import { isClaimedHistory } from "./types";
 
 function locationTotalSI(loc: LocationInput): number {
   return (
@@ -258,7 +259,7 @@ function calcLocationFirePremium(
   rateMaster: RateMasterRow[],
   settings: GlobalSettings,
 ): { premium: number | string; rate: number | null } {
-  if (loc.claims_history === "We have claimed in the past 3 years") {
+  if (isClaimedHistory(loc.claims_history)) {
     return { premium: "Kindly refer proposal to office", rate: null };
   }
 
@@ -327,8 +328,8 @@ export function calcProposal(
   pincodes: PincodeRow[] | Map<string, number>,
   settings: GlobalSettings,
 ): ProposalResult {
-  const referralRequired = input.locations.some(
-    (l) => l.claims_history === "We have claimed in the past 3 years",
+  const referralRequired = input.locations.some((l) =>
+    isClaimedHistory(l.claims_history),
   );
 
   const stockFloater = input.floater_cover.enabled;

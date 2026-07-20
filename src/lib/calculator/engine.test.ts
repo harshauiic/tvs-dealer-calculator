@@ -43,7 +43,7 @@ function buildAditiInput(): ProposalInput {
       address: loc.address,
       pincode: loc.pincode,
       occupancy: loc.occupancy as ProposalInput["locations"][0]["occupancy"],
-      claims_history: "Nil claims in the past 3 years" as const,
+      claims_history: "Nil Claims/Circumstances in the past 3 years" as const,
       building_si: loc.building_si,
       plant_machinery_si: loc.plant_machinery_si,
       furniture_si: loc.furniture_si,
@@ -81,7 +81,6 @@ function buildAditiInput(): ProposalInput {
     },
     locations,
     sections,
-    remarks: "",
   };
 }
 
@@ -124,7 +123,8 @@ describe("calcProposal", () => {
 
   it("returns referral message for claims history", () => {
     const input = buildAditiInput();
-    input.locations[0].claims_history = "We have claimed in the past 3 years";
+    input.locations[0].claims_history =
+      "We have claimed/There have been circumstances of claim in the past 3 years";
     const pincodeMap = new Map([["201301", 2]]);
     const result = calcProposal(input, rateMaster, pincodeMap, settings);
     expect(result.referral_required).toBe(true);

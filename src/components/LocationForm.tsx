@@ -139,12 +139,37 @@ export default function LocationForm({
       </div>
 
       <div className="space-y-4">
-        <h4 className="subsection-title">Expiring policy details</h4>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h4 className="subsection-title mb-0">Expiring policy details</h4>
+          <label className="choice-control text-sm">
+            <input
+              type="checkbox"
+              checked={location.no_expiring_policy}
+              onChange={(e) => {
+                const no_expiring_policy = e.target.checked;
+                onChange({
+                  ...location,
+                  no_expiring_policy,
+                  ...(no_expiring_policy
+                    ? {
+                        insurance_company: "",
+                        period_start: "",
+                        period_end: "",
+                        period_of_cover: "",
+                      }
+                    : {}),
+                });
+              }}
+            />
+            <span>There is no expiring policy for this location</span>
+          </label>
+        </div>
         <div className="space-y-4 max-w-xl">
           <div>
             <label>Name of Insurance company</label>
             <input
               value={location.insurance_company}
+              disabled={location.no_expiring_policy}
               onChange={(e) => update("insurance_company", e.target.value)}
             />
           </div>
@@ -156,6 +181,7 @@ export default function LocationForm({
                 <input
                   type="date"
                   value={location.period_start}
+                  disabled={location.no_expiring_policy}
                   onChange={(e) => {
                     const period_start = e.target.value;
                     onChange({
@@ -174,6 +200,7 @@ export default function LocationForm({
                 <input
                   type="date"
                   value={location.period_end}
+                  disabled={location.no_expiring_policy}
                   onChange={(e) => {
                     const period_end = e.target.value;
                     onChange({
@@ -198,11 +225,12 @@ export default function LocationForm({
               }
             >
               <option value="Select">Select</option>
-              <option value="Nil claims in the past 3 years">
-                Nil claims in the past 3 years
+              <option value="Nil Claims/Circumstances in the past 3 years">
+                Nil Claims/Circumstances in the past 3 years
               </option>
-              <option value="We have claimed in the past 3 years">
-                We have claimed in the past 3 years
+              <option value="We have claimed/There have been circumstances of claim in the past 3 years">
+                We have claimed/There have been circumstances of claim in the past 3
+                years
               </option>
             </select>
           </div>

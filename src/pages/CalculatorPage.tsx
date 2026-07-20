@@ -367,21 +367,6 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
         onChange={(sections) => setInput((prev) => ({ ...prev, sections }))}
       />
 
-      <div className="card space-y-4">
-        <h2 className="section-title">Additional Remarks</h2>
-        <div>
-          <label>Remarks</label>
-          <textarea
-            rows={4}
-            value={input.remarks}
-            onChange={(e) =>
-              setInput((prev) => ({ ...prev, remarks: e.target.value }))
-            }
-            placeholder="Enter any additional comments"
-          />
-        </div>
-      </div>
-
       {result && <PremiumSummary result={result} premiumReady={premiumReady} />}
 
       <div className="flex flex-wrap gap-3">
