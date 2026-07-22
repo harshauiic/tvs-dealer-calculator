@@ -143,12 +143,12 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
       const ratesSnapshot = { rateMaster, settings };
       if (reference) {
         await updateProposal(
-          reference,
+          reference.trim(),
           input.insured_name.trim(),
           payload,
           ratesSnapshot,
         );
-        setSaveMessage(`Proposal updated: ${reference}`);
+        setSaveMessage(`Proposal updated: ${reference.trim()}`);
       } else {
         const saved = await createProposal(
           input.insured_name.trim(),

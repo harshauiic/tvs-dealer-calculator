@@ -158,8 +158,11 @@ export async function updateProposal(
   payload: unknown,
   ratesSnapshot: unknown,
 ) {
+  const ref = referenceNumber.trim();
+  if (!ref) throw new Error("Proposal reference is required");
+
   if (!supabase) {
-    const key = `proposal_${referenceNumber}`;
+    const key = `proposal_${ref}`;
     const existing = localStorage.getItem(key);
     if (!existing) throw new Error("Proposal not found");
     const parsed = JSON.parse(existing) as Record<string, unknown>;
@@ -168,27 +171,70 @@ export async function updateProposal(
       JSON.stringify({
         ...parsed,
         insured_name: insuredName,
-        reference_number: referenceNumber,
+        reference_number: ref,
         payload,
         rates_snapshot: ratesSnapshot,
         updated_at: new Date().toISOString(),
       }),
     );
-    return { reference_number: referenceNumber };
+    return { reference_number: ref };
   }
-  const { data, error } = await supabase
+
+  const baseUpdate = {
+    insured_name: insuredName,
+    payload,
+    rates_snapshot: ratesSnapshot,
+  };
+
+  // Prefer update with updated_at; retry without if the column is missing.
+  let { data, error } = await supabase
     .from("proposals")
     .update({
-      insured_name: insuredName,
-      payload,
-      rates_snapshot: ratesSnapshot,
+      ...baseUpdate,
       updated_at: new Date().toISOString(),
     })
-    .eq("reference_number", referenceNumber)
+    .eq("reference_number", ref)
     .select("reference_number")
-    .single();
-  if (error) throw error;
+    .maybeSingle();
+
+  if (error && isMissingColumnError(error, "updated_at")) {
+    ({ data, error } = await supabase
+      .from("proposals")
+      .update(baseUpdate)
+      .eq("reference_number", ref)
+      .select("reference_number")
+      .maybeSingle());
+  }
+
+  if (error) {
+    throw new Error(formatSupabaseError(error, "Failed to update proposal"));
+  }
+  if (!data) {
+    // Common when UPDATE RLS policy is missing (migration 005 not applied).
+    throw new Error(
+      "Update failed: proposal was not changed. Run migration 005_proposal_crud.sql in Supabase (adds public update policy), then try again.",
+    );
+  }
   return data;
+}
+
+function isMissingColumnError(error: unknown, column: string): boolean {
+  if (!error || typeof error !== "object") return false;
+  const code = "code" in error ? String((error as { code?: string }).code) : "";
+  const message =
+    "message" in error ? String((error as { message?: string }).message) : "";
+  return code === "42703" || message.toLowerCase().includes(column.toLowerCase());
+}
+
+function formatSupabaseError(error: unknown, fallback: string): string {
+  if (!error || typeof error !== "object") return fallback;
+  const message =
+    "message" in error ? String((error as { message?: string }).message) : "";
+  const details =
+    "details" in error ? String((error as { details?: string }).details ?? "") : "";
+  const hint =
+    "hint" in error ? String((error as { hint?: string }).hint ?? "") : "";
+  return [message || fallback, details, hint].filter(Boolean).join(" — ");
 }
 
 export async function loadProposal(referenceNumber: string) {

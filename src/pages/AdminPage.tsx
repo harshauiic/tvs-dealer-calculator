@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   adminLogout,
@@ -40,6 +40,32 @@ type ProposalListItem = {
   created_at: string;
 };
 
+type ProposalSortKey = "reference_number" | "created_at";
+type SortDir = "asc" | "desc";
+
+function proposalNumberValue(reference: string): number {
+  const match = reference.match(/(\d+)\s*$/);
+  return match ? Number(match[1]) : Number.NaN;
+}
+
+function compareProposals(
+  a: ProposalListItem,
+  b: ProposalListItem,
+  key: ProposalSortKey,
+  dir: SortDir,
+): number {
+  let cmp = 0;
+  if (key === "created_at") {
+    cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+  } else {
+    const aNum = proposalNumberValue(a.reference_number);
+    const bNum = proposalNumberValue(b.reference_number);
+    if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) cmp = aNum - bNum;
+    else cmp = a.reference_number.localeCompare(b.reference_number);
+  }
+  return dir === "asc" ? cmp : -cmp;
+}
+
 export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [rates, setRates] = useState<RateMasterRow[]>([]);
@@ -49,6 +75,10 @@ export default function AdminPage() {
     new Set(),
   );
   const [deletingProposals, setDeletingProposals] = useState(false);
+  const [proposalSearch, setProposalSearch] = useState("");
+  const [proposalSortKey, setProposalSortKey] =
+    useState<ProposalSortKey>("created_at");
+  const [proposalSortDir, setProposalSortDir] = useState<SortDir>("desc");
   const [status, setStatus] = useState<string | null>(null);
   const [tab, setTab] = useState<"rates" | "settings" | "limitations" | "proposals">(
     "rates",
@@ -90,8 +120,13 @@ export default function AdminPage() {
 
   const toggleSelectAllProposals = () => {
     setSelectedProposalIds((prev) => {
-      if (proposals.length > 0 && prev.size === proposals.length) return new Set();
-      return new Set(proposals.map((p) => p.id));
+      if (
+        filteredProposals.length > 0 &&
+        filteredProposals.every((p) => prev.has(p.id))
+      ) {
+        return new Set();
+      }
+      return new Set(filteredProposals.map((p) => p.id));
     });
   };
 
@@ -113,6 +148,34 @@ export default function AdminPage() {
     } finally {
       setDeletingProposals(false);
     }
+  };
+
+  const filteredProposals = useMemo(() => {
+    const q = proposalSearch.trim().toLowerCase();
+    const filtered = !q
+      ? [...proposals]
+      : proposals.filter(
+          (p) =>
+            p.reference_number.toLowerCase().includes(q) ||
+            p.insured_name.toLowerCase().includes(q),
+        );
+    return filtered.sort((a, b) =>
+      compareProposals(a, b, proposalSortKey, proposalSortDir),
+    );
+  }, [proposals, proposalSearch, proposalSortKey, proposalSortDir]);
+
+  const toggleProposalSort = (key: ProposalSortKey) => {
+    if (proposalSortKey === key) {
+      setProposalSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setProposalSortKey(key);
+      setProposalSortDir(key === "created_at" ? "desc" : "asc");
+    }
+  };
+
+  const sortIndicator = (key: ProposalSortKey) => {
+    if (proposalSortKey !== key) return "";
+    return proposalSortDir === "asc" ? " ↑" : " ↓";
   };
 
   const recomputeRates = (updatedRates: RateMasterRow[], s: GlobalSettings) => {
@@ -374,6 +437,19 @@ export default function AdminPage() {
                 : `Delete selected (${selectedProposalIds.size})`}
             </button>
           </div>
+          <div className="flex flex-wrap gap-3 items-end">
+            <div className="flex-1 min-w-[220px]">
+              <label>Search</label>
+              <input
+                value={proposalSearch}
+                onChange={(e) => setProposalSearch(e.target.value)}
+                placeholder="Search by reference or insured name"
+              />
+            </div>
+            <p className="text-xs text-slate-500 pb-2">
+              Showing {filteredProposals.length} of {proposals.length}
+            </p>
+          </div>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left">
@@ -381,21 +457,37 @@ export default function AdminPage() {
                   <input
                     type="checkbox"
                     checked={
-                      proposals.length > 0 &&
-                      selectedProposalIds.size === proposals.length
+                      filteredProposals.length > 0 &&
+                      filteredProposals.every((p) => selectedProposalIds.has(p.id))
                     }
                     onChange={toggleSelectAllProposals}
                     aria-label="Select all proposals"
                   />
                 </th>
-                <th className="p-2">Reference</th>
+                <th className="p-2">
+                  <button
+                    type="button"
+                    className="font-semibold hover:text-blue-800"
+                    onClick={() => toggleProposalSort("reference_number")}
+                  >
+                    Proposal No.{sortIndicator("reference_number")}
+                  </button>
+                </th>
                 <th className="p-2">Insured</th>
-                <th className="p-2">Created</th>
+                <th className="p-2">
+                  <button
+                    type="button"
+                    className="font-semibold hover:text-blue-800"
+                    onClick={() => toggleProposalSort("created_at")}
+                  >
+                    Date{sortIndicator("created_at")}
+                  </button>
+                </th>
                 <th className="p-2"></th>
               </tr>
             </thead>
             <tbody>
-              {proposals.map((p) => (
+              {filteredProposals.map((p) => (
                 <tr key={p.id} className="border-b">
                   <td className="p-2">
                     <input
@@ -418,10 +510,12 @@ export default function AdminPage() {
                   </td>
                 </tr>
               ))}
-              {!proposals.length && (
+              {!filteredProposals.length && (
                 <tr>
                   <td colSpan={5} className="p-4 text-slate-500">
-                    No proposals saved yet.
+                    {proposals.length
+                      ? "No proposals match your search."
+                      : "No proposals saved yet."}
                   </td>
                 </tr>
               )}
