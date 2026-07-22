@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import type { GlobalSettings, PincodeRow, RateMasterRow } from "../calculator";
+import { generateReferenceNumber } from "../calculator";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
@@ -92,7 +93,16 @@ export async function saveProposal(
 ) {
   if (!supabase) {
     const key = `proposal_${referenceNumber}`;
-    localStorage.setItem(key, JSON.stringify({ insuredName, payload, ratesSnapshot }));
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        insured_name: insuredName,
+        reference_number: referenceNumber,
+        payload,
+        rates_snapshot: ratesSnapshot,
+        created_at: new Date().toISOString(),
+      }),
+    );
     return { reference_number: referenceNumber };
   }
   const { data, error } = await supabase
@@ -103,6 +113,78 @@ export async function saveProposal(
       payload,
       rates_snapshot: ratesSnapshot,
     })
+    .select("reference_number")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const code = "code" in error ? String((error as { code?: string }).code) : "";
+  const message =
+    "message" in error ? String((error as { message?: string }).message) : "";
+  return code === "23505" || /duplicate|unique/i.test(message);
+}
+
+/** Create a new proposal with a unique UIIC-TVS-##### reference. */
+export async function createProposal(
+  insuredName: string,
+  payload: unknown,
+  ratesSnapshot: unknown,
+) {
+  for (let attempt = 0; attempt < 15; attempt++) {
+    const referenceNumber = generateReferenceNumber();
+    const existing = await loadProposal(referenceNumber);
+    if (existing) continue;
+    try {
+      return await saveProposal(
+        insuredName,
+        referenceNumber,
+        payload,
+        ratesSnapshot,
+      );
+    } catch (error) {
+      if (isUniqueViolation(error) && attempt < 14) continue;
+      throw error;
+    }
+  }
+  throw new Error("Failed to allocate a unique proposal reference");
+}
+
+export async function updateProposal(
+  referenceNumber: string,
+  insuredName: string,
+  payload: unknown,
+  ratesSnapshot: unknown,
+) {
+  if (!supabase) {
+    const key = `proposal_${referenceNumber}`;
+    const existing = localStorage.getItem(key);
+    if (!existing) throw new Error("Proposal not found");
+    const parsed = JSON.parse(existing) as Record<string, unknown>;
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        ...parsed,
+        insured_name: insuredName,
+        reference_number: referenceNumber,
+        payload,
+        rates_snapshot: ratesSnapshot,
+        updated_at: new Date().toISOString(),
+      }),
+    );
+    return { reference_number: referenceNumber };
+  }
+  const { data, error } = await supabase
+    .from("proposals")
+    .update({
+      insured_name: insuredName,
+      payload,
+      rates_snapshot: ratesSnapshot,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("reference_number", referenceNumber)
     .select("reference_number")
     .single();
   if (error) throw error;
@@ -124,15 +206,58 @@ export async function loadProposal(referenceNumber: string) {
   return data;
 }
 
-export async function listProposals(limit = 50) {
-  if (!supabase) return [];
+export async function listProposals(limit = 100) {
+  if (!supabase) {
+    const rows: Array<{
+      id: string;
+      reference_number: string;
+      insured_name: string;
+      created_at: string;
+    }> = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith("proposal_")) continue;
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const parsed = JSON.parse(raw) as {
+          insured_name?: string;
+          reference_number?: string;
+          created_at?: string;
+        };
+        const reference_number =
+          parsed.reference_number ?? key.replace(/^proposal_/, "");
+        rows.push({
+          id: reference_number,
+          reference_number,
+          insured_name: parsed.insured_name ?? "",
+          created_at: parsed.created_at ?? new Date(0).toISOString(),
+        });
+      } catch {
+        // skip corrupt entries
+      }
+    }
+    return rows.sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, limit);
+  }
   const { data, error } = await supabase
     .from("proposals")
-    .select("id, reference_number, insured_name, created_at, payload")
+    .select("id, reference_number, insured_name, created_at")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
   return data ?? [];
+}
+
+export async function deleteProposals(ids: string[]) {
+  if (!ids.length) return;
+  if (!supabase) {
+    for (const id of ids) {
+      localStorage.removeItem(`proposal_${id}`);
+    }
+    return;
+  }
+  const { error } = await supabase.from("proposals").delete().in("id", ids);
+  if (error) throw error;
 }
 
 export async function updateRateMaster(rows: RateMasterRow[]) {

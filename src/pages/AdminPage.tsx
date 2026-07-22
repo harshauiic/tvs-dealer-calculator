@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   adminLogout,
+  deleteProposals,
   fetchGlobalSettings,
   fetchRateMaster,
   getSession,
@@ -32,13 +33,22 @@ const LIMITATION_KEYS = [
   "limit_money_cash_in_till",
 ] as const satisfies ReadonlyArray<keyof GlobalSettings>;
 
+type ProposalListItem = {
+  id: string;
+  reference_number: string;
+  insured_name: string;
+  created_at: string;
+};
+
 export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [rates, setRates] = useState<RateMasterRow[]>([]);
   const [settings, setSettings] = useState<GlobalSettings | null>(null);
-  const [proposals, setProposals] = useState<
-    Array<{ reference_number: string; insured_name: string; created_at: string }>
-  >([]);
+  const [proposals, setProposals] = useState<ProposalListItem[]>([]);
+  const [selectedProposalIds, setSelectedProposalIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [deletingProposals, setDeletingProposals] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [tab, setTab] = useState<"rates" | "settings" | "limitations" | "proposals">(
     "rates",
@@ -65,8 +75,45 @@ export default function AdminPage() {
     ]);
     setRates(rateData);
     setSettings(settingsData);
-    setProposals(proposalData);
+    setProposals(proposalData as ProposalListItem[]);
+    setSelectedProposalIds(new Set());
   }
+
+  const toggleProposalSelection = (id: string) => {
+    setSelectedProposalIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllProposals = () => {
+    setSelectedProposalIds((prev) => {
+      if (proposals.length > 0 && prev.size === proposals.length) return new Set();
+      return new Set(proposals.map((p) => p.id));
+    });
+  };
+
+  const handleDeleteSelectedProposals = async () => {
+    if (!selectedProposalIds.size) return;
+    const confirmed = window.confirm(
+      `Delete ${selectedProposalIds.size} selected proposal(s)? This cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    setDeletingProposals(true);
+    setStatus(null);
+    try {
+      await deleteProposals([...selectedProposalIds]);
+      setStatus(`Deleted ${selectedProposalIds.size} proposal(s)`);
+      await loadData();
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Failed to delete proposals");
+    } finally {
+      setDeletingProposals(false);
+    }
+  };
 
   const recomputeRates = (updatedRates: RateMasterRow[], s: GlobalSettings) => {
     return updatedRates.map((row) => {
@@ -313,11 +360,34 @@ export default function AdminPage() {
       )}
 
       {tab === "proposals" && (
-        <div className="card overflow-x-auto">
-          <h3 className="section-title">Saved Proposals</h3>
+        <div className="card overflow-x-auto space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="section-title mb-0 border-0 pb-0">Saved Proposals</h3>
+            <button
+              type="button"
+              className="btn-danger"
+              disabled={!selectedProposalIds.size || deletingProposals}
+              onClick={handleDeleteSelectedProposals}
+            >
+              {deletingProposals
+                ? "Deleting..."
+                : `Delete selected (${selectedProposalIds.size})`}
+            </button>
+          </div>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left">
+                <th className="p-2 w-10">
+                  <input
+                    type="checkbox"
+                    checked={
+                      proposals.length > 0 &&
+                      selectedProposalIds.size === proposals.length
+                    }
+                    onChange={toggleSelectAllProposals}
+                    aria-label="Select all proposals"
+                  />
+                </th>
                 <th className="p-2">Reference</th>
                 <th className="p-2">Insured</th>
                 <th className="p-2">Created</th>
@@ -326,7 +396,15 @@ export default function AdminPage() {
             </thead>
             <tbody>
               {proposals.map((p) => (
-                <tr key={p.reference_number} className="border-b">
+                <tr key={p.id} className="border-b">
+                  <td className="p-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedProposalIds.has(p.id)}
+                      onChange={() => toggleProposalSelection(p.id)}
+                      aria-label={`Select ${p.reference_number}`}
+                    />
+                  </td>
                   <td className="p-2 font-mono text-xs">{p.reference_number}</td>
                   <td className="p-2">{p.insured_name}</td>
                   <td className="p-2">{new Date(p.created_at).toLocaleString()}</td>
@@ -342,7 +420,7 @@ export default function AdminPage() {
               ))}
               {!proposals.length && (
                 <tr>
-                  <td colSpan={4} className="p-4 text-slate-500">
+                  <td colSpan={5} className="p-4 text-slate-500">
                     No proposals saved yet.
                   </td>
                 </tr>

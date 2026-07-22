@@ -52,7 +52,7 @@ export default function LoadProposalPage() {
         <input
           value={reference}
           onChange={(e) => setReference(e.target.value)}
-          placeholder="TVSM-YYYYMMDD-XXXXXX"
+          placeholder="UIIC-TVS-12345"
         />
       </div>
       <button

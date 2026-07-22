@@ -105,8 +105,6 @@ export function formatCurrency(value: number): string {
 }
 
 export function generateReferenceNumber(): string {
-  const date = new Date();
-  const ymd = date.toISOString().slice(0, 10).replace(/-/g, "");
-  const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
-  return `TVSM-${ymd}-${rand}`;
+  const n = Math.floor(Math.random() * 100_000);
+  return `UIIC-TVS-${String(n).padStart(5, "0")}`;
 }

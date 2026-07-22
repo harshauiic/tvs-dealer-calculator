@@ -14,6 +14,7 @@ import {
 import type { ProposalInput, TerrorismScope } from "../lib/calculator";
 import { downloadProposalPdf } from "../lib/pdf/proposalPdf";
 import { useCalculatorData } from "../hooks/useCalculatorData";
+import { createProposal, updateProposal } from "../lib/supabase/client";
 
 interface Props {
   initialInput?: ProposalInput;
@@ -25,7 +26,10 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
   const [input, setInput] = useState<ProposalInput>(() =>
     initialInput ? normalizeProposalInput(initialInput) : defaultProposalInput(),
   );
-  const [reference] = useState(initialReference ?? "");
+  const [reference, setReference] = useState(initialReference ?? "");
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [collapsedLocations, setCollapsedLocations] = useState<Set<string>>(new Set());
 
   const collapsible = input.locations.length >= 2;
@@ -123,9 +127,49 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
     }
   };
 
+  const handleSave = async () => {
+    if (!result || !premiumReady || !settings) return;
+    if (!input.insured_name.trim()) {
+      setSaveError("Please enter Insured name before saving");
+      setSaveMessage(null);
+      return;
+    }
+
+    setSaving(true);
+    setSaveError(null);
+    setSaveMessage(null);
+    try {
+      const payload = { input, result };
+      const ratesSnapshot = { rateMaster, settings };
+      if (reference) {
+        await updateProposal(
+          reference,
+          input.insured_name.trim(),
+          payload,
+          ratesSnapshot,
+        );
+        setSaveMessage(`Proposal updated: ${reference}`);
+      } else {
+        const saved = await createProposal(
+          input.insured_name.trim(),
+          payload,
+          ratesSnapshot,
+        );
+        setReference(saved.reference_number);
+        setSaveMessage(`Proposal saved: ${saved.reference_number}`);
+      }
+    } catch (err) {
+      setSaveError(
+        err instanceof Error ? err.message : "Failed to save proposal",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handlePdf = async () => {
     if (!result || !premiumReady) return;
-    await downloadProposalPdf(input, result);
+    await downloadProposalPdf(input, result, reference || undefined);
   };
 
   if (loading) return <p className="text-slate-600">Loading calculator data...</p>;
@@ -369,7 +413,31 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
 
       {result && <PremiumSummary result={result} premiumReady={premiumReady} />}
 
+      {(saveMessage || saveError) && (
+        <div
+          className={`rounded-md p-3 text-sm ${
+            saveError
+              ? "bg-red-50 border border-red-200 text-red-800"
+              : "bg-emerald-50 border border-emerald-200 text-emerald-900"
+          }`}
+        >
+          {saveError ?? saveMessage}
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-3">
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={!premiumReady || saving}
+          onClick={handleSave}
+        >
+          {saving
+            ? "Saving..."
+            : reference
+              ? "Update Proposal"
+              : "Save Proposal"}
+        </button>
         <button
           type="button"
           className="btn-primary"

@@ -361,10 +361,12 @@ function ProposalDocument({
   input,
   result,
   logoSrc,
+  referenceNumber,
 }: {
   input: ProposalInput;
   result: ProposalResult;
   logoSrc: string;
+  referenceNumber?: string;
 }) {
   const today = new Date().toLocaleDateString("en-IN");
   const notes = collectNotes(result);
@@ -378,6 +380,9 @@ function ProposalDocument({
         </View>
         <Text style={styles.title}>TVS MOTOR DEALERS PACKAGE POLICY</Text>
         <Text style={styles.subtitle}>Proposal Date: {today}</Text>
+        {referenceNumber ? (
+          <Text style={styles.subtitle}>Proposal Reference: {referenceNumber}</Text>
+        ) : null}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Insured Details</Text>
@@ -735,6 +740,7 @@ function ProposalDocument({
 export async function downloadProposalPdf(
   input: ProposalInput,
   result: ProposalResult,
+  referenceNumber?: string,
 ) {
   const logoPath = `${import.meta.env.BASE_URL}uiic-header.png`;
   const logoResponse = await fetch(logoPath);
@@ -747,12 +753,18 @@ export async function downloadProposalPdf(
   });
 
   const blob = await pdf(
-    <ProposalDocument input={input} result={result} logoSrc={logoSrc} />,
+    <ProposalDocument
+      input={input}
+      result={result}
+      logoSrc={logoSrc}
+      referenceNumber={referenceNumber}
+    />,
   ).toBlob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `TVSM-Proposal-${input.insured_name.replace(/\s+/g, "-") || "draft"}.pdf`;
+  const fileRef = referenceNumber?.replace(/\s+/g, "-") || "draft";
+  a.download = `UIIC-TVS-Proposal-${fileRef}-${input.insured_name.replace(/\s+/g, "-") || "draft"}.pdf`;
   a.click();
   URL.revokeObjectURL(url);
 }
