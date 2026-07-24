@@ -172,7 +172,11 @@ function validateSectionLimits(
 ): string[] {
   const errors: string[] = [];
   if (input.sections.public_liability === "Cover Opted") {
-    if (input.sections.public_liability_si > settings.limit_public_liability_si) {
+    if (!input.sections.public_liability_si || input.sections.public_liability_si <= 0) {
+      errors.push("Please enter Public Liability Sum Insured");
+    } else if (
+      input.sections.public_liability_si > settings.limit_public_liability_si
+    ) {
       errors.push(
         exceedLimitMessage(
           "Public Liability Sum Insured",
@@ -183,6 +187,18 @@ function validateSectionLimits(
     }
   }
   if (input.sections.fidelity === "Cover Opted") {
+    if (!input.sections.fidelity_employees || input.sections.fidelity_employees <= 0) {
+      errors.push("Please enter No of permanent employees");
+    }
+    if (!input.sections.fidelity_floater_si || input.sections.fidelity_floater_si <= 0) {
+      errors.push("Please enter Floater SI");
+    }
+    if (
+      !input.sections.fidelity_per_employee_limit ||
+      input.sections.fidelity_per_employee_limit <= 0
+    ) {
+      errors.push("Please enter Per employee limit");
+    }
     if (input.sections.fidelity_employees > settings.limit_fidelity_employees) {
       errors.push(
         exceedLimitMessage(

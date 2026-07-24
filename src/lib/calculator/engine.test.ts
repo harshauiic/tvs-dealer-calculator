@@ -31,6 +31,10 @@ function buildAditiInput(): ProposalInput {
     aditiFixture.global_sections.public_liability === "Cover Opted"
       ? "Cover Opted"
       : "Cover Not Opted";
+  // Fixture Excel net assumed PL premium ≈ 0; use minimal valid SI so validation passes.
+  if (sections.public_liability === "Cover Opted") {
+    sections.public_liability_si = 1;
+  }
   sections.fidelity =
     aditiFixture.global_sections.fidelity === "Cover Opted"
       ? "Cover Opted"

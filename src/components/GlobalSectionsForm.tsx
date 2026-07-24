@@ -85,7 +85,10 @@ export default function GlobalSectionsForm({ sections, locations, onChange }: Pr
                       Public Liability details
                     </p>
                     <div>
-                      <label>Public Liability Sum Insured</label>
+                      <label>
+                        Public Liability Sum Insured{" "}
+                        <span className="text-red-600">*</span>
+                      </label>
                       <AmountInput
                         value={sections.public_liability_si}
                         onChange={(value) => update("public_liability_si", value)}
@@ -102,21 +105,27 @@ export default function GlobalSectionsForm({ sections, locations, onChange }: Pr
                       Fidelity details
                     </p>
                     <div>
-                      <label>No of permanent employees</label>
+                      <label>
+                        No of permanent employees <span className="text-red-600">*</span>
+                      </label>
                       <AmountInput
                         value={sections.fidelity_employees}
                         onChange={(value) => update("fidelity_employees", value)}
                       />
                     </div>
                     <div>
-                      <label>Floater SI</label>
+                      <label>
+                        Floater SI <span className="text-red-600">*</span>
+                      </label>
                       <AmountInput
                         value={sections.fidelity_floater_si}
                         onChange={(value) => update("fidelity_floater_si", value)}
                       />
                     </div>
                     <div>
-                      <label>Per employee limit</label>
+                      <label>
+                        Per employee limit <span className="text-red-600">*</span>
+                      </label>
                       <AmountInput
                         value={sections.fidelity_per_employee_limit}
                         onChange={(value) =>

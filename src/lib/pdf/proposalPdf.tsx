@@ -95,26 +95,33 @@ const styles = StyleSheet.create({
   appendixLabel: { width: "35%", fontWeight: "bold" },
   appendixValue: { width: "65%" },
   signatureBox: {
-    marginTop: 24,
+    marginTop: 28,
     paddingTop: 12,
     borderTopWidth: 0.5,
     borderTopColor: "#ddd",
+    alignItems: "flex-start",
+    width: "48%",
   },
   signatureLabel: {
     fontSize: 10,
     fontWeight: "bold",
-    marginBottom: 36,
+    marginBottom: 8,
+  },
+  signatureGap: {
+    height: 72,
+    width: "100%",
   },
   signatureLine: {
-    marginTop: 48,
     borderTopWidth: 1,
     borderTopColor: "#333",
-    width: "45%",
-    alignSelf: "flex-end",
+    width: "100%",
     paddingTop: 4,
-    textAlign: "center",
+    textAlign: "left",
     fontSize: 8,
   },
+  conditionBlock: { marginBottom: 5 },
+  conditionTitle: { marginBottom: 2, fontWeight: "bold" },
+  conditionItem: { marginLeft: 10, marginBottom: 1 },
   footer: { marginTop: 10, fontSize: 7, color: "#666" },
 });
 
@@ -250,7 +257,7 @@ function PolicyAppendix() {
           ],
           ["Public Liability Section", "0.5% of Indemnity Limit"],
           [
-            "",
+            "MBD",
             "1% of Sum insured of each machine subject to minimum of Rs. 2500/-",
           ],
           ["EEI", "5% of the claim amount subject to min. Rs. 2500/-"],
@@ -294,29 +301,68 @@ function PolicyAppendix() {
       ))}
 
       <Text style={styles.appendixHeader}>Conditions</Text>
-      <Text style={{ marginBottom: 2 }}>
-        1) Fire section: a. Sum Insured should be less than 50Crs of all Insurable assets
-        in the risk location. b. Terms and conditions as per UVUS policy.
-      </Text>
-      <Text style={{ marginBottom: 2 }}>2) Burglary: a. Theft and RSMD included.</Text>
-      <Text style={{ marginBottom: 2 }}>
-        3) Money: a. Transit from dealer place to Bank and vice versa. b. Cash carrying
-        must be done through an authorised permanent employee of Insured. c. Warranted
-        that cash in transit above 1 lacs is carried through private transport. d.
-        Warranted that keys are not kept in the shop premises after business hours & also
-        the cash lying outside is to be kept in safe after business hours (Safe means
-        heavy duty metallic lockable container). e. Transit of money should take place
-        within 50kms limit only. f. Cash Carried in either in briefcase, Boxes, Bags and
-        in any other types of carrying bags. g. Proper accounting system is available.
-      </Text>
-      <Text style={{ marginBottom: 2 }}>
-        4) Fidelity: a. Only permanent employees are covered. b. Loss of property
-        entrusted to any person other than the designated employee of the Insured is not
-        covered.
-      </Text>
-      <Text style={{ marginBottom: 2 }}>
-        5) MBD and EEI: a. All machineries and equipments are covered.
-      </Text>
+      <View style={styles.conditionBlock}>
+        <Text style={styles.conditionTitle}>1) Fire section:</Text>
+        <Text style={styles.conditionItem}>
+          a. Sum Insured should be less than 50Crs of all Insurable assets in the risk
+          location.
+        </Text>
+        <Text style={styles.conditionItem}>
+          b. Terms and conditions as per UVUS policy.
+        </Text>
+      </View>
+      <View style={styles.conditionBlock}>
+        <Text style={styles.conditionTitle}>2) Burglary:</Text>
+        <Text style={styles.conditionItem}>a. Theft and RSMD included.</Text>
+        <Text style={styles.conditionItem}>
+          b. CCTV must be installed/ Watch and ward to be employed at the risk locations.
+        </Text>
+      </View>
+      <View style={styles.conditionBlock}>
+        <Text style={styles.conditionTitle}>3) Money:</Text>
+        <Text style={styles.conditionItem}>
+          a. Transit from dealer place to Bank and vice versa.
+        </Text>
+        <Text style={styles.conditionItem}>
+          b. Cash carrying must be done through an authorised permanent employee of
+          Insured.
+        </Text>
+        <Text style={styles.conditionItem}>
+          c. Warranted that cash in transit above 1 lacs is carried through private
+          transport.
+        </Text>
+        <Text style={styles.conditionItem}>
+          d. Warranted that keys are not kept in the shop premises after business hours
+          & also the cash lying outside is to be kept in safe after business hours (Safe
+          means heavy duty metallic lockable container).
+        </Text>
+        <Text style={styles.conditionItem}>
+          e. Transit of money should take place within 50kms limit only.
+        </Text>
+        <Text style={styles.conditionItem}>
+          f. Cash Carried in either in briefcase, Boxes, Bags and in any other types of
+          carrying bags.
+        </Text>
+        <Text style={styles.conditionItem}>
+          g. Proper accounting system is available.
+        </Text>
+      </View>
+      <View style={styles.conditionBlock}>
+        <Text style={styles.conditionTitle}>4) Fidelity:</Text>
+        <Text style={styles.conditionItem}>
+          a. Only permanent employees are covered.
+        </Text>
+        <Text style={styles.conditionItem}>
+          b. Loss of property entrusted to any person other than the designated employee
+          of the Insured is not covered.
+        </Text>
+      </View>
+      <View style={styles.conditionBlock}>
+        <Text style={styles.conditionTitle}>5) MBD and EEI:</Text>
+        <Text style={styles.conditionItem}>
+          a. All machineries and equipments are covered.
+        </Text>
+      </View>
       <Text style={{ marginBottom: 4 }}>
         All other terms and conditions as per the respective standard policies.
       </Text>
@@ -351,6 +397,7 @@ function PolicyAppendix() {
 
       <View style={styles.signatureBox} wrap={false}>
         <Text style={styles.signatureLabel}>Signature of Insured with Seal</Text>
+        <View style={styles.signatureGap} />
         <Text style={styles.signatureLine}>Signature / Seal</Text>
       </View>
     </View>
