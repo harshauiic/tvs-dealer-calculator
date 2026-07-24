@@ -10,14 +10,36 @@ import {
 import type { ProposalInput, ProposalResult } from "../calculator";
 
 const styles = StyleSheet.create({
-  page: { padding: 32, fontSize: 9, fontFamily: "Helvetica", color: "#111" },
+  page: {
+    padding: 32,
+    paddingBottom: 48,
+    fontSize: 9,
+    fontFamily: "Helvetica",
+    color: "#111",
+  },
   logoWrap: {
-    alignItems: "flex-start",
+    alignItems: "center",
     marginBottom: 8,
   },
   logo: { width: 280, height: 56, objectFit: "contain" },
-  title: { fontSize: 12, fontWeight: "bold", marginBottom: 4, textAlign: "center" },
-  subtitle: { fontSize: 8, marginBottom: 12, textAlign: "center", color: "#555" },
+  title: { fontSize: 12, fontWeight: "bold", marginBottom: 6, textAlign: "center" },
+  metaRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 12,
+  },
+  metaLeft: { fontSize: 8, color: "#555", width: "48%" },
+  metaRight: { fontSize: 8, color: "#555", width: "48%", textAlign: "right" },
+  pageNumber: {
+    position: "absolute",
+    bottom: 18,
+    left: 32,
+    right: 32,
+    fontSize: 8,
+    color: "#666",
+    textAlign: "center",
+  },
   section: {
     marginBottom: 10,
     paddingBottom: 6,
@@ -102,11 +124,6 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     width: "48%",
   },
-  signatureLabel: {
-    fontSize: 10,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
   signatureGap: {
     height: 72,
     width: "100%",
@@ -122,7 +139,6 @@ const styles = StyleSheet.create({
   conditionBlock: { marginBottom: 5 },
   conditionTitle: { marginBottom: 2, fontWeight: "bold" },
   conditionItem: { marginLeft: 10, marginBottom: 1 },
-  footer: { marginTop: 10, fontSize: 7, color: "#666" },
 });
 
 const STATUS_MESSAGES = new Set([
@@ -396,7 +412,6 @@ function PolicyAppendix() {
       ))}
 
       <View style={styles.signatureBox} wrap={false}>
-        <Text style={styles.signatureLabel}>Signature of Insured with Seal</Text>
         <View style={styles.signatureGap} />
         <Text style={styles.signatureLine}>Signature / Seal</Text>
       </View>
@@ -422,14 +437,25 @@ function ProposalDocument({
   return (
     <Document>
       <Page size="A4" style={styles.page}>
+        <Text
+          style={styles.pageNumber}
+          render={({ pageNumber, totalPages }) =>
+            `Page ${pageNumber} of ${totalPages}`
+          }
+          fixed
+        />
         <View style={styles.logoWrap}>
           <Image src={logoSrc} style={styles.logo} />
         </View>
         <Text style={styles.title}>TVS MOTOR DEALERS PACKAGE POLICY</Text>
-        <Text style={styles.subtitle}>Proposal Date: {today}</Text>
-        {referenceNumber ? (
-          <Text style={styles.subtitle}>Proposal Reference: {referenceNumber}</Text>
-        ) : null}
+        <View style={styles.metaRow}>
+          <Text style={styles.metaLeft}>Proposal Date: {today}</Text>
+          <Text style={styles.metaRight}>
+            {referenceNumber
+              ? `Proposal Reference: ${referenceNumber}`
+              : ""}
+          </Text>
+        </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Insured Details</Text>
