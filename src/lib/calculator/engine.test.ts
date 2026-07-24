@@ -134,9 +134,11 @@ describe("calcProposal", () => {
     const result = calcProposal(input, rateMaster, pincodeMap, settings);
     expect(result.referral_required).toBe(true);
     expect(result.locations[0].fire_premium).toBe(
-      "Kindly refer proposal to office",
+      "Section 1 - Fire - Location 1: Kindly refer proposal to office",
     );
-    expect(result.errors).toContain("Kindly refer proposal to office");
+    expect(result.errors).toContain(
+      "Section 1 - Fire - Location 1: Kindly refer proposal to office",
+    );
     expect(result.net_premium).toBe("Incomplete");
   });
 
@@ -151,7 +153,10 @@ describe("calcProposal", () => {
 
     expect(result.locations[0].fire_premium).toBe(0);
     expect(result.net_premium).toBe("Incomplete");
-    expect(result.errors).toContain("Please enter Insured name");
+    expect(result.errors).toContain("Insured Details: Please enter Insured name");
+    expect(result.errors).toContain(
+      "Insured Details: Please enter Communication Address",
+    );
   });
 
   it("adds floater SI to burglary and validates max SI per location", () => {

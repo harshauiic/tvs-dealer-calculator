@@ -146,13 +146,24 @@ const STATUS_MESSAGES = new Set([
   "Kindly refer proposal to office",
 ]);
 
+function isStatusMessage(value: string) {
+  return (
+    STATUS_MESSAGES.has(value) ||
+    value.includes("Kindly refer proposal to office")
+  );
+}
+
 function formatAmount(value: number): string {
   return `Rs. ${value.toLocaleString("en-IN")}`;
 }
 
 function displayPremium(value: number | string): string {
   if (typeof value === "number") return formatAmount(Math.round(value * 100) / 100);
-  if (STATUS_MESSAGES.has(value)) return value;
+  if (isStatusMessage(value)) {
+    return value.includes("Kindly refer proposal to office")
+      ? "Kindly refer proposal to office"
+      : value;
+  }
   return "-";
 }
 
@@ -175,7 +186,7 @@ function collectNotes(result: ProposalResult): string[] {
     result.sections.fidelity_premium,
   ];
   for (const premium of premiums) {
-    if (typeof premium === "string" && !STATUS_MESSAGES.has(premium)) {
+    if (typeof premium === "string" && !isStatusMessage(premium)) {
       messages.add(premium);
     }
   }

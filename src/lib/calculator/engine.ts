@@ -58,41 +58,56 @@ function isLocationStarted(loc: LocationInput): boolean {
   );
 }
 
+function scoped(scope: string, message: string): string {
+  return `${scope}: ${message}`;
+}
+
+function fireLocationScope(locationIndex: number): string {
+  return `Section 1 - Fire - Location ${locationIndex + 1}`;
+}
+
+function moneyLocationScope(locationIndex: number): string {
+  return `Section 8 - Money - Location ${locationIndex + 1}`;
+}
+
+const INSURED_SCOPE = "Insured Details";
+const FLOATER_SCOPE = "Section 1 - Fire - Floater";
+const PUBLIC_LIABILITY_SCOPE = "Section 6 - Public Liability";
+const FIDELITY_SCOPE = "Section 7 - Fidelity";
+
 function validateLocationFields(
   loc: LocationInput,
   eqZone: number | null,
+  locationIndex: number,
 ): string[] {
+  const scope = fireLocationScope(locationIndex);
   const errors: string[] = [];
-  if (!loc.address.trim()) errors.push("Please enter Risk location Address");
-  if (!loc.pincode || loc.pincode.length !== 6) errors.push("Please enter valid Pincode");
-  if (eqZone === null && loc.pincode.length === 6) {
-    errors.push("Please enter correct Pincode above");
+  if (!loc.address.trim()) {
+    errors.push(scoped(scope, "Please enter Risk location Address"));
   }
-  if (!loc.occupancy) errors.push("Select Risk description accordingly");
-  if (loc.claims_history === "Select") errors.push("Select Claims detail accordingly");
+  if (!loc.pincode || loc.pincode.length !== 6) {
+    errors.push(scoped(scope, "Please enter valid Pincode"));
+  }
+  if (eqZone === null && loc.pincode.length === 6) {
+    errors.push(scoped(scope, "Please enter correct Pincode above"));
+  }
+  if (!loc.occupancy) {
+    errors.push(scoped(scope, "Select Risk description accordingly"));
+  }
+  if (loc.claims_history === "Select") {
+    errors.push(scoped(scope, "Select Claims detail accordingly"));
+  }
   if (!loc.no_expiring_policy) {
     if (!loc.insurance_company.trim()) {
-      errors.push("Please enter Name of Insurance company");
+      errors.push(scoped(scope, "Please enter Name of Insurance company"));
     }
     if (!loc.period_start) {
-      errors.push("Please enter Start Date");
+      errors.push(scoped(scope, "Please enter Start Date"));
     }
     if (!loc.period_end) {
-      errors.push("Please enter End Date");
+      errors.push(scoped(scope, "Please enter End Date"));
     }
   }
-  return errors;
-}
-
-function validateLocation(
-  loc: LocationInput,
-  eqZone: number | null,
-  insuredName: string,
-  commAddress: string,
-): string[] {
-  const errors = validateLocationFields(loc, eqZone);
-  if (!insuredName.trim()) errors.push("Please enter Insured name");
-  if (!commAddress.trim()) errors.push("Please enter Communication Address");
   return errors;
 }
 
@@ -111,7 +126,7 @@ function validateFireFieldLimits(
   floaterEnabled: boolean,
   maxSumInsuredPerLocation: number,
 ): string[] {
-  const label = `Location ${locationIndex + 1}`;
+  const scope = fireLocationScope(locationIndex);
   const fireSectionsTotal = locationTotalSI(loc);
   const comparedTotal = floaterEnabled
     ? fireSectionsTotal + maxSumInsuredPerLocation
@@ -122,7 +137,10 @@ function validateFireFieldLimits(
       ? `Fire SI fields (${formatLimit(fireSectionsTotal)}) + Maximum sum insured per location (${formatLimit(maxSumInsuredPerLocation)}) = ${formatLimit(comparedTotal)}`
       : `total Fire Sum Insured (${formatLimit(comparedTotal)})`;
     return [
-      `${label}: ${detail} exceeds maximum limit of ${formatLimit(settings.max_location_si)}`,
+      scoped(
+        scope,
+        `${detail} exceeds maximum limit of ${formatLimit(settings.max_location_si)}`,
+      ),
     ];
   }
   return [];
@@ -134,25 +152,27 @@ function validateMoneyFieldLimits(
   locationIndex: number,
 ): string[] {
   if (loc.money.cover !== "Opted") return [];
-  const label = `Location ${locationIndex + 1}`;
+  const scope = moneyLocationScope(locationIndex);
   const money = loc.money;
   const errors: string[] = [];
 
   if (!money.annual_carrying_limit || money.annual_carrying_limit <= 0) {
-    errors.push(`${label}: Please enter Annual Carrying limit`);
+    errors.push(scoped(scope, "Please enter Annual Carrying limit"));
   }
   if (!money.single_carrying_limit || money.single_carrying_limit <= 0) {
-    errors.push(`${label}: Please enter Single carrying limit`);
+    errors.push(scoped(scope, "Please enter Single carrying limit"));
   }
 
   const checks: Array<[number, number, string]> = [
-    [money.annual_carrying_limit, settings.limit_money_annual_carrying, `${label} Annual Carrying limit`],
-    [money.single_carrying_limit, settings.limit_money_single_carrying, `${label} Single carrying limit`],
-    [money.cash_in_safe, settings.limit_money_cash_in_safe, `${label} Cash in safe`],
-    [money.cash_in_till, settings.limit_money_cash_in_till, `${label} Cash in till`],
+    [money.annual_carrying_limit, settings.limit_money_annual_carrying, "Annual Carrying limit"],
+    [money.single_carrying_limit, settings.limit_money_single_carrying, "Single carrying limit"],
+    [money.cash_in_safe, settings.limit_money_cash_in_safe, "Cash in safe"],
+    [money.cash_in_till, settings.limit_money_cash_in_till, "Cash in till"],
   ];
   for (const [value, limit, fieldLabel] of checks) {
-    if (value > limit) errors.push(exceedLimitMessage(fieldLabel, value, limit));
+    if (value > limit) {
+      errors.push(scoped(scope, exceedLimitMessage(fieldLabel, value, limit)));
+    }
   }
   if (
     money.single_carrying_limit > 0 &&
@@ -160,7 +180,10 @@ function validateMoneyFieldLimits(
     money.single_carrying_limit >= money.annual_carrying_limit
   ) {
     errors.push(
-      `${label}: Single carrying limit should be less than Annual Carrying limit`,
+      scoped(
+        scope,
+        "Single carrying limit should be less than Annual Carrying limit",
+      ),
     );
   }
   return errors;
@@ -173,56 +196,70 @@ function validateSectionLimits(
   const errors: string[] = [];
   if (input.sections.public_liability === "Cover Opted") {
     if (!input.sections.public_liability_si || input.sections.public_liability_si <= 0) {
-      errors.push("Please enter Public Liability Sum Insured");
+      errors.push(
+        scoped(PUBLIC_LIABILITY_SCOPE, "Please enter Public Liability Sum Insured"),
+      );
     } else if (
       input.sections.public_liability_si > settings.limit_public_liability_si
     ) {
       errors.push(
-        exceedLimitMessage(
-          "Public Liability Sum Insured",
-          input.sections.public_liability_si,
-          settings.limit_public_liability_si,
+        scoped(
+          PUBLIC_LIABILITY_SCOPE,
+          exceedLimitMessage(
+            "Public Liability Sum Insured",
+            input.sections.public_liability_si,
+            settings.limit_public_liability_si,
+          ),
         ),
       );
     }
   }
   if (input.sections.fidelity === "Cover Opted") {
     if (!input.sections.fidelity_employees || input.sections.fidelity_employees <= 0) {
-      errors.push("Please enter No of permanent employees");
+      errors.push(scoped(FIDELITY_SCOPE, "Please enter No of permanent employees"));
     }
     if (!input.sections.fidelity_floater_si || input.sections.fidelity_floater_si <= 0) {
-      errors.push("Please enter Floater SI");
+      errors.push(scoped(FIDELITY_SCOPE, "Please enter Floater SI"));
     }
     if (
       !input.sections.fidelity_per_employee_limit ||
       input.sections.fidelity_per_employee_limit <= 0
     ) {
-      errors.push("Please enter Per employee limit");
+      errors.push(scoped(FIDELITY_SCOPE, "Please enter Per employee limit"));
     }
     if (input.sections.fidelity_employees > settings.limit_fidelity_employees) {
       errors.push(
-        exceedLimitMessage(
-          "No of permanent employees",
-          input.sections.fidelity_employees,
-          settings.limit_fidelity_employees,
+        scoped(
+          FIDELITY_SCOPE,
+          exceedLimitMessage(
+            "No of permanent employees",
+            input.sections.fidelity_employees,
+            settings.limit_fidelity_employees,
+          ),
         ),
       );
     }
     if (input.sections.fidelity_floater_si > settings.limit_fidelity_floater_si) {
       errors.push(
-        exceedLimitMessage(
-          "Fidelity Floater SI",
-          input.sections.fidelity_floater_si,
-          settings.limit_fidelity_floater_si,
+        scoped(
+          FIDELITY_SCOPE,
+          exceedLimitMessage(
+            "Fidelity Floater SI",
+            input.sections.fidelity_floater_si,
+            settings.limit_fidelity_floater_si,
+          ),
         ),
       );
     }
     if (input.sections.fidelity_per_employee_limit > settings.limit_fidelity_per_employee) {
       errors.push(
-        exceedLimitMessage(
-          "Per employee limit",
-          input.sections.fidelity_per_employee_limit,
-          settings.limit_fidelity_per_employee,
+        scoped(
+          FIDELITY_SCOPE,
+          exceedLimitMessage(
+            "Per employee limit",
+            input.sections.fidelity_per_employee_limit,
+            settings.limit_fidelity_per_employee,
+          ),
         ),
       );
     }
@@ -231,7 +268,12 @@ function validateSectionLimits(
       input.sections.fidelity_floater_si > 0 &&
       input.sections.fidelity_per_employee_limit > input.sections.fidelity_floater_si
     ) {
-      errors.push("Per employee limit should be less than or equal to Floater SI");
+      errors.push(
+        scoped(
+          FIDELITY_SCOPE,
+          "Per employee limit should be less than or equal to Floater SI",
+        ),
+      );
     }
   }
   return errors;
@@ -244,10 +286,14 @@ function validateFloaterCover(input: ProposalInput): string[] {
   const { floater_sum_insured, max_sum_insured_per_location } = input.floater_cover;
 
   if (!floater_sum_insured || floater_sum_insured <= 0) {
-    errors.push("Please enter Stock floater sum insured required");
+    errors.push(
+      scoped(FLOATER_SCOPE, "Please enter Stock floater sum insured required"),
+    );
   }
   if (!max_sum_insured_per_location || max_sum_insured_per_location <= 0) {
-    errors.push("Please enter Maximum stock sum insured per location");
+    errors.push(
+      scoped(FLOATER_SCOPE, "Please enter Maximum stock sum insured per location"),
+    );
   }
 
   if (
@@ -256,7 +302,10 @@ function validateFloaterCover(input: ProposalInput): string[] {
     max_sum_insured_per_location > floater_sum_insured
   ) {
     errors.push(
-      "Maximum stock sum insured per location should be less than or equal to Stock floater sum insured required",
+      scoped(
+        FLOATER_SCOPE,
+        "Maximum stock sum insured per location should be less than or equal to Stock floater sum insured required",
+      ),
     );
   }
 
@@ -270,7 +319,12 @@ function validateFloaterCover(input: ProposalInput): string[] {
       const formatted = minRequired.toLocaleString("en-IN", {
         maximumFractionDigits: 2,
       });
-      errors.push(`Enter the value greater than ${formatted}`);
+      errors.push(
+        scoped(
+          FLOATER_SCOPE,
+          `Maximum stock sum insured per location — Enter the value greater than ${formatted}`,
+        ),
+      );
     }
   }
 
@@ -285,13 +339,23 @@ function calcLocationFirePremium(
   withTerrorism: boolean,
   rateMaster: RateMasterRow[],
   settings: GlobalSettings,
+  locationIndex: number,
 ): { premium: number | string; rate: number | null } {
+  const scope = fireLocationScope(locationIndex);
   if (isClaimedHistory(loc.claims_history)) {
-    return { premium: "Kindly refer proposal to office", rate: null };
+    return {
+      premium: scoped(scope, "Kindly refer proposal to office"),
+      rate: null,
+    };
   }
 
   const row = findRateRow(loc.occupancy, eqZone, rateMaster);
-  if (!row) return { premium: "Invalid occupancy/EQ zone", rate: null };
+  if (!row) {
+    return {
+      premium: scoped(scope, "Invalid occupancy/EQ zone"),
+      rate: null,
+    };
+  }
 
   const nonStockSI = locationNonStockSI(loc);
   const siForRate = stockFloater
@@ -313,15 +377,22 @@ function calcLocationMoneyPremium(
   locationIndex: number,
 ): { totalSI: number; premium: number | string } {
   const money = loc.money;
+  const scope = moneyLocationScope(locationIndex);
   const effectiveCover = resolveMoneyCover(money.cover, terrorism);
   if (effectiveCover === "Cover Not Opted") {
     return { totalSI: 0, premium: "Cover Not Opted" };
   }
   if (!money.annual_carrying_limit || money.annual_carrying_limit <= 0) {
-    return { totalSI: 0, premium: "Please enter Annual Carrying limit" };
+    return {
+      totalSI: 0,
+      premium: scoped(scope, "Please enter Annual Carrying limit"),
+    };
   }
   if (!money.single_carrying_limit || money.single_carrying_limit <= 0) {
-    return { totalSI: 0, premium: "Please enter Single carrying limit" };
+    return {
+      totalSI: 0,
+      premium: scoped(scope, "Please enter Single carrying limit"),
+    };
   }
   if (
     money.single_carrying_limit > 0 &&
@@ -330,7 +401,10 @@ function calcLocationMoneyPremium(
   ) {
     return {
       totalSI: 0,
-      premium: `Location ${locationIndex + 1}: Single carrying limit should be less than Annual Carrying limit`,
+      premium: scoped(
+        scope,
+        "Single carrying limit should be less than Annual Carrying limit",
+      ),
     };
   }
 
@@ -368,13 +442,7 @@ export function calcProposal(
 
   const locationResults: LocationResult[] = input.locations.map((loc, index) => {
     const eqZone = lookupEqZone(loc.pincode, pincodes);
-    const errors = validateLocation(
-      loc,
-      eqZone,
-      input.insured_name,
-      input.communication_address,
-    );
-    const fireErrors = validateLocationFields(loc, eqZone);
+    const fireErrors = validateLocationFields(loc, eqZone, index);
     const fireLimitErrors = validateFireFieldLimits(
       loc,
       settings,
@@ -382,6 +450,7 @@ export function calcProposal(
       stockFloater,
       maxPerLocation,
     );
+    const moneyLimitErrors = validateMoneyFieldLimits(loc, settings, index);
 
     let firePremium: number | string = 0;
     let fireRate: number | null = null;
@@ -397,13 +466,17 @@ export function calcProposal(
         withFireTerrorism,
         rateMaster,
         settings,
+        index,
       );
       firePremium = fire.premium;
       fireRate = fire.rate;
     } else if (isLocationStarted(loc) && fireErrors.length > 0) {
       firePremium = fireErrors[0];
     } else if (isLocationStarted(loc) && eqZone === null && loc.pincode.length === 6) {
-      firePremium = "Please enter correct Pincode above";
+      firePremium = scoped(
+        fireLocationScope(index),
+        "Please enter correct Pincode above",
+      );
     }
 
     const money = calcLocationMoneyPremium(loc, settings, input.terrorism, index);
@@ -418,7 +491,7 @@ export function calcProposal(
       money_total_si: money.totalSI,
       money_premium: money.premium,
       errors: isLocationStarted(loc)
-        ? [...errors, ...fireLimitErrors, ...validateMoneyFieldLimits(loc, settings, index)]
+        ? [...fireErrors, ...fireLimitErrors, ...moneyLimitErrors]
         : [],
     };
   });
@@ -515,7 +588,7 @@ export function calcProposal(
         : 0;
 
   const publicLiabilityPremium =
-    sectionLimitErrors.find((e) => e.startsWith("Public Liability")) ??
+    sectionLimitErrors.find((e) => e.startsWith(PUBLIC_LIABILITY_SCOPE)) ??
     calcSectionPremium(
       gate,
       input.sections.public_liability,
@@ -524,13 +597,8 @@ export function calcProposal(
     );
 
   const fidelityPremium =
-    sectionLimitErrors.find(
-      (e) =>
-        e.startsWith("Fidelity") ||
-        e.startsWith("No of permanent") ||
-        e.startsWith("Per employee") ||
-        e.includes("Floater SI"),
-    ) ?? calcFidelityPremium(gate, input.sections, settings);
+    sectionLimitErrors.find((e) => e.startsWith(FIDELITY_SCOPE)) ??
+    calcFidelityPremium(gate, input.sections, settings);
 
   const firePremiums = locationResults.map((l) => l.fire_premium);
   const moneyPremiums = locationResults.map((l) => l.money_premium);
@@ -571,18 +639,14 @@ export function calcProposal(
     ...floaterErrors,
     ...sectionLimitErrors,
   ];
-  if (!input.insured_name.trim()) proposalErrors.push("Please enter Insured name");
+  if (!input.insured_name.trim()) {
+    proposalErrors.push(scoped(INSURED_SCOPE, "Please enter Insured name"));
+  }
   if (!input.communication_address.trim()) {
-    proposalErrors.push("Please enter Communication Address");
+    proposalErrors.push(scoped(INSURED_SCOPE, "Please enter Communication Address"));
   }
 
-  const locationErrors = locationResults.flatMap((l) =>
-    l.errors.filter(
-      (e) =>
-        e !== "Please enter Insured name" &&
-        e !== "Please enter Communication Address",
-    ),
-  );
+  const locationErrors = locationResults.flatMap((l) => l.errors);
 
   const premiumBlockers = allPremiums.filter(
     (p): p is string => typeof p === "string" && p !== "Cover Not Opted",
@@ -596,7 +660,8 @@ export function calcProposal(
         ...l,
         fire_rate: null,
         fire_premium:
-          l.fire_premium === "Kindly refer proposal to office"
+          typeof l.fire_premium === "string" &&
+          l.fire_premium.includes("Kindly refer proposal to office")
             ? l.fire_premium
             : 0,
         money_total_si: 0,
@@ -687,16 +752,24 @@ function calcFidelityPremium(
 ): number | string {
   if (sections.fidelity === "Cover Not Opted") return "Cover Not Opted";
   if (gate === null) return 0;
-  if (!sections.fidelity_employees) return "Please enter no of permanent employees";
-  if (!sections.fidelity_floater_si) return "Please enter Floater SI";
-  if (!sections.fidelity_per_employee_limit)
-    return "Please enter Per employee limit";
+  if (!sections.fidelity_employees) {
+    return scoped(FIDELITY_SCOPE, "Please enter No of permanent employees");
+  }
+  if (!sections.fidelity_floater_si) {
+    return scoped(FIDELITY_SCOPE, "Please enter Floater SI");
+  }
+  if (!sections.fidelity_per_employee_limit) {
+    return scoped(FIDELITY_SCOPE, "Please enter Per employee limit");
+  }
   if (
     sections.fidelity_per_employee_limit > 0 &&
     sections.fidelity_floater_si > 0 &&
     sections.fidelity_per_employee_limit > sections.fidelity_floater_si
   ) {
-    return "Per employee limit should be less than or equal to Floater SI";
+    return scoped(
+      FIDELITY_SCOPE,
+      "Per employee limit should be less than or equal to Floater SI",
+    );
   }
   return sections.fidelity_floater_si * (settings.fidelity_rate_pct / 100);
 }

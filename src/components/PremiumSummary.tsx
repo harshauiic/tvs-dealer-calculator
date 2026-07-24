@@ -11,9 +11,20 @@ const STATUS_MESSAGES = new Set([
   "Kindly refer proposal to office",
 ]);
 
+function isStatusMessage(value: string) {
+  return (
+    STATUS_MESSAGES.has(value) ||
+    value.includes("Kindly refer proposal to office")
+  );
+}
+
 function displayPremium(value: number | string) {
   if (typeof value === "number") return formatCurrency(value);
-  if (STATUS_MESSAGES.has(value)) return value;
+  if (isStatusMessage(value)) {
+    return value.includes("Kindly refer proposal to office")
+      ? "Kindly refer proposal to office"
+      : value;
+  }
   return "—";
 }
 
@@ -38,7 +49,7 @@ function collectPremiumMessages(result: ProposalResult): string[] {
   ];
 
   for (const premium of premiums) {
-    if (typeof premium === "string" && !STATUS_MESSAGES.has(premium)) {
+    if (typeof premium === "string" && !isStatusMessage(premium)) {
       messages.add(premium);
     }
   }
@@ -140,10 +151,24 @@ export default function PremiumSummary({ result, premiumReady = true }: Props) {
       )}
 
       {messages.length > 0 && (
-        <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-3 text-sm space-y-1">
-          {messages.map((msg) => (
-            <p key={msg}>{msg}</p>
-          ))}
+        <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-3 text-sm space-y-2">
+          <p className="font-semibold text-red-900">Please fix the following:</p>
+          <ul className="list-disc pl-5 space-y-1.5">
+            {messages.map((msg) => {
+              const sep = msg.indexOf(": ");
+              if (sep === -1) {
+                return <li key={msg}>{msg}</li>;
+              }
+              const scope = msg.slice(0, sep);
+              const detail = msg.slice(sep + 2);
+              return (
+                <li key={msg}>
+                  <span className="font-semibold">{scope}</span>
+                  <span className="text-red-700"> — {detail}</span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
 
