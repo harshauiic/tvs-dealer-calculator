@@ -3,6 +3,8 @@ import {
   BorderStyle,
   Document,
   Footer,
+  Header,
+  ImageRun,
   Packer,
   PageNumber,
   Paragraph,
@@ -11,6 +13,7 @@ import {
   TableRow,
   TextRun,
   VerticalAlign,
+  VerticalMergeType,
   WidthType,
 } from "docx";
 import type { ProposalInput, ProposalResult } from "../calculator";
@@ -25,14 +28,21 @@ export interface PolicyGenerationDetails {
 
 const PAGE_WIDTH = 11000;
 const FONT = "Calibri";
-const SIZE_BODY = 18; // 9pt
-const SIZE_TITLE = 22; // 11pt
-const SIZE_HEADER = 20; // 10pt
+const SIZE_BODY = 18;
+const SIZE_SMALL = 16;
+const SIZE_COMPANY = 28;
+const SIZE_ADDRESS = 20;
+const SIZE_POLICY_TITLE = 24;
+const SIZE_SECTION = 20;
+const UIN = "IRDAN545RP0297V01200708";
 const COVER_NOT_OPTED = "COVER NOT OPTED";
 
 const THIN = { style: BorderStyle.SINGLE, size: 8, color: "000000" };
+const THICK = { style: BorderStyle.SINGLE, size: 12, color: "1e3a8a" };
 const BORDERS = { top: THIN, bottom: THIN, left: THIN, right: THIN };
+const BOX_BORDERS = { top: THICK, bottom: THICK, left: THICK, right: THICK };
 const NONE = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
+const NO_BORDERS = { top: NONE, bottom: NONE, left: NONE, right: NONE };
 const FOOTER_TOP = {
   top: { style: BorderStyle.SINGLE, size: 6, color: "666666" },
   bottom: NONE,
@@ -59,11 +69,11 @@ function formatDisplayDate(isoDate: string): string {
 }
 
 function formatStartPeriod(date: string, time: string): string {
-  return `${time} Hrs of ${formatDisplayDate(date)}`;
+  return `${time} hrs of ${formatDisplayDate(date)}`;
 }
 
 function formatEndPeriod(date: string): string {
-  return `Midnight of ${formatDisplayDate(date)}`;
+  return `midnight of ${formatDisplayDate(date)}`;
 }
 
 function locationTotalSI(loc: ProposalInput["locations"][0]): number {
@@ -77,23 +87,40 @@ function locationTotalSI(loc: ProposalInput["locations"][0]): number {
   );
 }
 
-function run(text: string, opts?: { bold?: boolean; size?: number }) {
+function run(
+  text: string,
+  opts?: { bold?: boolean; size?: number; color?: string },
+) {
   return new TextRun({
     text,
     bold: opts?.bold,
     size: opts?.size ?? SIZE_BODY,
     font: FONT,
+    color: opts?.color,
   });
 }
 
 function p(
   text: string,
-  opts?: { bold?: boolean; size?: number; center?: boolean; after?: number },
+  opts?: {
+    bold?: boolean;
+    size?: number;
+    center?: boolean;
+    after?: number;
+    before?: number;
+    color?: string;
+  },
 ) {
   return new Paragraph({
     alignment: opts?.center ? AlignmentType.CENTER : AlignmentType.LEFT,
-    spacing: { after: opts?.after ?? 60 },
-    children: [run(text, { bold: opts?.bold, size: opts?.size ?? SIZE_BODY })],
+    spacing: { after: opts?.after ?? 40, before: opts?.before ?? 0 },
+    children: [
+      run(text, {
+        bold: opts?.bold,
+        size: opts?.size ?? SIZE_BODY,
+        color: opts?.color,
+      }),
+    ],
   });
 }
 
@@ -106,18 +133,21 @@ function cell(
     align?: Align;
     fill?: string;
     size?: number;
+    verticalMerge?: (typeof VerticalMergeType)[keyof typeof VerticalMergeType];
+    borders?: typeof BORDERS;
   },
 ) {
   return new TableCell({
-    borders: BORDERS,
+    borders: opts?.borders ?? BORDERS,
     columnSpan: opts?.span,
+    verticalMerge: opts?.verticalMerge,
     width: { size: width, type: WidthType.DXA },
     verticalAlign: VerticalAlign.CENTER,
     shading: opts?.fill ? { fill: opts.fill } : undefined,
     children: [
       new Paragraph({
         alignment: opts?.align ?? AlignmentType.LEFT,
-        spacing: { before: 40, after: 40 },
+        spacing: { before: 30, after: 30 },
         children: [
           run(text, {
             bold: opts?.bold,
@@ -134,32 +164,113 @@ function coverLabel(opted: boolean, value?: number): string {
   return fmtNum(value ?? 0);
 }
 
+async function fetchImage(path: string): Promise<Uint8Array> {
+  const response = await fetch(`${import.meta.env.BASE_URL}${path}`);
+  if (!response.ok) throw new Error(`Failed to load ${path}`);
+  return new Uint8Array(await response.arrayBuffer());
+}
+
+function logoParagraph(logoBytes: Uint8Array, width = 90, height = 68) {
+  return new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 120 },
+    children: [
+      new ImageRun({
+        type: "png",
+        data: logoBytes,
+        transformation: { width, height },
+      }),
+    ],
+  });
+}
+
+function policyFooter(policyNumber: string) {
+  return new Footer({
+    children: [
+      new Table({
+        width: { size: PAGE_WIDTH, type: WidthType.DXA },
+        columnWidths: [7000, 4000],
+        rows: [
+          new TableRow({
+            children: [
+              new TableCell({
+                borders: FOOTER_TOP,
+                width: { size: 7000, type: WidthType.DXA },
+                children: [
+                  new Paragraph({
+                    spacing: { before: 60 },
+                    children: [
+                      run(`Policy No.: ${policyNumber}`, {
+                        bold: true,
+                        size: SIZE_SMALL,
+                      }),
+                    ],
+                  }),
+                  new Paragraph({
+                    children: [
+                      run(
+                        "The genuineness of the policy can be verified at www.uiic.co.in",
+                        { size: 14 },
+                      ),
+                    ],
+                  }),
+                ],
+              }),
+              new TableCell({
+                borders: FOOTER_TOP,
+                width: { size: 4000, type: WidthType.DXA },
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.RIGHT,
+                    spacing: { before: 60 },
+                    children: [
+                      run("Page ", { size: SIZE_SMALL }),
+                      new TextRun({
+                        children: [PageNumber.CURRENT],
+                        font: FONT,
+                        size: SIZE_SMALL,
+                      }),
+                      run(" of ", { size: SIZE_SMALL }),
+                      new TextRun({
+                        children: [PageNumber.TOTAL_PAGES],
+                        font: FONT,
+                        size: SIZE_SMALL,
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+}
+
 export async function downloadPolicyDocx(
   input: ProposalInput,
   result: ProposalResult,
   details: PolicyGenerationDetails,
 ): Promise<void> {
+  const [logoBytes, signatureBytes] = await Promise.all([
+    fetchImage("uiic-policy-logo.png"),
+    fetchImage("policy-signature.png"),
+  ]);
+
   const locations = input.locations;
   const locCount = Math.max(locations.length, 1);
-
-  const sectionW = 1600;
-  const fieldW = 1800;
+  const sectionW = 1700;
+  const fieldW = 1900;
   const locTotalW = PAGE_WIDTH - sectionW - fieldW;
   const locW = Math.floor(locTotalW / locCount);
   const locWidths = Array.from({ length: locCount }, (_, i) =>
     i === locCount - 1 ? locTotalW - locW * (locCount - 1) : locW,
   );
   const scheduleColWidths = [sectionW, fieldW, ...locWidths];
-  const riskColWidths = [2200, 5200, 3600];
-  const metaColWidths = [2200, 3300, 2200, 3300];
-  const deductibleColWidths = [3500, 7500];
-  const premiumColWidths = [2200, 2300];
 
   const startText = formatStartPeriod(details.startDate, details.startTime);
   const endText = formatEndPeriod(details.endDate);
-  const insuredLine = input.gstin_number
-    ? `${input.insured_name} / ${input.gstin_number}`
-    : input.insured_name;
 
   const net = typeof result.net_premium === "number" ? result.net_premium : 0;
   const gst = typeof result.gst === "number" ? result.gst : 0;
@@ -177,31 +288,86 @@ export async function downloadPolicyDocx(
     : COVER_NOT_OPTED;
   const terrorism = input.terrorism.opted ? "COVER OPTED" : COVER_NOT_OPTED;
 
-  function siRow(
+  const amountAlign = (v: string | number): Align =>
+    typeof v === "number" || /^\d/.test(String(v))
+      ? AlignmentType.RIGHT
+      : AlignmentType.CENTER;
+
+  function valueCells(values: Array<string | number>) {
+    return values.map((v, i) =>
+      cell(typeof v === "number" ? fmtNum(v) : v, locWidths[i], {
+        align: amountAlign(v),
+      }),
+    );
+  }
+
+  /** First row of a vertically merged section block. */
+  function sectionStartRow(
+    section: string,
     label: string,
     values: Array<string | number>,
-    section = "",
   ): TableRow {
     return new TableRow({
       children: [
-        cell(section, sectionW, { bold: Boolean(section) }),
+        cell(section, sectionW, {
+          bold: true,
+          fill: "E8EEF7",
+          verticalMerge: VerticalMergeType.RESTART,
+          align: AlignmentType.CENTER,
+          size: SIZE_SMALL,
+        }),
         cell(label, fieldW),
-        ...values.map((v, i) =>
-          cell(typeof v === "number" ? fmtNum(v) : v, locWidths[i], {
-            align:
-              typeof v === "number" || /^\d/.test(String(v))
-                ? AlignmentType.RIGHT
-                : AlignmentType.CENTER,
-          }),
-        ),
+        ...valueCells(values),
       ],
     });
   }
 
-  function spanRow(section: string, label: string, value: string): TableRow {
+  function sectionContinueRow(
+    label: string,
+    values: Array<string | number>,
+  ): TableRow {
     return new TableRow({
       children: [
-        cell(section, sectionW, { bold: Boolean(section) }),
+        cell("", sectionW, {
+          fill: "E8EEF7",
+          verticalMerge: VerticalMergeType.CONTINUE,
+        }),
+        cell(label, fieldW),
+        ...valueCells(values),
+      ],
+    });
+  }
+
+  function spanSectionRow(
+    section: string,
+    label: string,
+    value: string,
+    merge: "restart" | "continue" | "none" = "none",
+  ): TableRow {
+    const sectionCell =
+      merge === "restart"
+        ? cell(section, sectionW, {
+            bold: true,
+            fill: "E8EEF7",
+            verticalMerge: VerticalMergeType.RESTART,
+            align: AlignmentType.CENTER,
+            size: SIZE_SMALL,
+          })
+        : merge === "continue"
+          ? cell("", sectionW, {
+              fill: "E8EEF7",
+              verticalMerge: VerticalMergeType.CONTINUE,
+            })
+          : cell(section, sectionW, {
+              bold: Boolean(section),
+              fill: section ? "E8EEF7" : undefined,
+              align: AlignmentType.CENTER,
+              size: SIZE_SMALL,
+            });
+
+    return new TableRow({
+      children: [
+        sectionCell,
         cell(label, fieldW),
         cell(value, locTotalW, {
           span: locCount,
@@ -212,45 +378,187 @@ export async function downloadPolicyDocx(
     });
   }
 
-  const metaTable = new Table({
-    width: { size: PAGE_WIDTH, type: WidthType.DXA },
-    columnWidths: metaColWidths,
+  // ---- Cover page (page 1) ----
+  const periodBox = new Table({
+    width: { size: 9000, type: WidthType.DXA },
+    columnWidths: [9000],
     rows: [
       new TableRow({
         children: [
-          cell("Policy Number", metaColWidths[0], { bold: true, fill: "DCE6F1" }),
-          cell(details.policyNumber, metaColWidths[1]),
-          cell("Previous Policy No", metaColWidths[2], {
-            bold: true,
-            fill: "DCE6F1",
+          new TableCell({
+            borders: BOX_BORDERS,
+            width: { size: 9000, type: WidthType.DXA },
+            shading: { fill: "F0F5FF" },
+            children: [
+              p("PERIOD OF INSURANCE", {
+                bold: true,
+                center: true,
+                size: SIZE_SECTION,
+                before: 80,
+              }),
+              p(`From ${startText} To ${endText}`, {
+                bold: true,
+                center: true,
+                size: SIZE_ADDRESS,
+                after: 80,
+              }),
+            ],
           }),
-          cell(details.previousPolicyNumber || " ", metaColWidths[3]),
+        ],
+      }),
+    ],
+  });
+
+  const coverChildren = [
+    logoParagraph(logoBytes, 110, 83),
+    p("UNITED INDIA INSURANCE COMPANY LIMITED", {
+      bold: true,
+      center: true,
+      size: SIZE_COMPANY,
+      after: 60,
+    }),
+    p("FAGUN CHAMBERS, NO. 1 & 2, II FLOOR, 26A, ETHIRAJ SALAI,", {
+      center: true,
+      size: SIZE_ADDRESS,
+    }),
+    p("EGMORE, CHENNAI 600008 TAMIL NADU", {
+      center: true,
+      size: SIZE_ADDRESS,
+    }),
+    p("PHONE: (044) 25384955", {
+      center: true,
+      size: SIZE_ADDRESS,
+      after: 160,
+    }),
+    p("SPECIAL CONTINGENCY POLICY", {
+      bold: true,
+      center: true,
+      size: SIZE_POLICY_TITLE,
+      after: 40,
+    }),
+    p(`POLICY NO.: ${details.policyNumber}`, {
+      bold: true,
+      center: true,
+      size: SIZE_SECTION,
+    }),
+    p(`UIN NO.: ${UIN}`, {
+      bold: true,
+      center: true,
+      size: SIZE_SECTION,
+      after: 160,
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [],
+    }),
+    // Center the period box using a full-width table with empty side cells
+    new Table({
+      width: { size: PAGE_WIDTH, type: WidthType.DXA },
+      columnWidths: [1000, 9000, 1000],
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({
+              borders: NO_BORDERS,
+              width: { size: 1000, type: WidthType.DXA },
+              children: [new Paragraph({ children: [] })],
+            }),
+            new TableCell({
+              borders: NO_BORDERS,
+              width: { size: 9000, type: WidthType.DXA },
+              children: [periodBox],
+            }),
+            new TableCell({
+              borders: NO_BORDERS,
+              width: { size: 1000, type: WidthType.DXA },
+              children: [new Paragraph({ children: [] })],
+            }),
+          ],
+        }),
+      ],
+    }),
+    p(""),
+    p("Insured", {
+      bold: true,
+      center: true,
+      size: SIZE_SECTION,
+      before: 120,
+    }),
+    p(input.insured_name.toUpperCase(), {
+      bold: true,
+      center: true,
+      size: SIZE_POLICY_TITLE,
+      after: 60,
+    }),
+    p(input.communication_address || "-", {
+      center: true,
+      size: SIZE_ADDRESS,
+      after: 40,
+    }),
+    ...(input.gstin_number
+      ? [
+          p(`GSTIN: ${input.gstin_number}`, {
+            center: true,
+            size: SIZE_BODY,
+            after: 120,
+          }),
+        ]
+      : [p("", { after: 80 })]),
+    p("Agent Name: HARITA INSURANCE BROKING LLP", {
+      center: true,
+      size: SIZE_BODY,
+      before: 80,
+    }),
+    p("Agent Code: BRC0000921", {
+      center: true,
+      size: SIZE_BODY,
+      after: 80,
+    }),
+    ...(details.previousPolicyNumber
+      ? [
+          p(`Previous Policy No.: ${details.previousPolicyNumber}`, {
+            center: true,
+            size: SIZE_BODY,
+          }),
+        ]
+      : []),
+  ];
+
+  // ---- Schedule page ----
+  const metaTable = new Table({
+    width: { size: PAGE_WIDTH, type: WidthType.DXA },
+    columnWidths: [2200, 3300, 2200, 3300],
+    rows: [
+      new TableRow({
+        children: [
+          cell("Policy Number", 2200, { bold: true, fill: "D6E3F0" }),
+          cell(details.policyNumber, 3300),
+          cell("Previous Policy No", 2200, { bold: true, fill: "D6E3F0" }),
+          cell(details.previousPolicyNumber || " ", 3300),
         ],
       }),
       new TableRow({
         children: [
-          cell("Insured Details", metaColWidths[0], {
-            bold: true,
-            fill: "DCE6F1",
-          }),
-          cell(insuredLine, metaColWidths[1] + metaColWidths[2] + metaColWidths[3], {
-            span: 3,
-          }),
+          cell("Insured Details", 2200, { bold: true, fill: "D6E3F0" }),
+          cell(
+            input.gstin_number
+              ? `${input.insured_name} / ${input.gstin_number}`
+              : input.insured_name,
+            8800,
+            { span: 3 },
+          ),
         ],
       }),
       new TableRow({
         children: [
-          cell("Period Of Insurance", metaColWidths[0], {
-            bold: true,
-            fill: "DCE6F1",
-          }),
-          cell(`From ${startText}`, metaColWidths[1]),
-          cell("To", metaColWidths[2], {
+          cell("Period Of Insurance", 2200, { bold: true, fill: "D6E3F0" }),
+          cell(`From ${startText}`, 3300),
+          cell("To", 2200, {
             bold: true,
             align: AlignmentType.CENTER,
-            fill: "DCE6F1",
+            fill: "D6E3F0",
           }),
-          cell(endText, metaColWidths[3]),
+          cell(endText, 3300),
         ],
       }),
     ],
@@ -258,7 +566,7 @@ export async function downloadPolicyDocx(
 
   const riskTable = new Table({
     width: { size: PAGE_WIDTH, type: WidthType.DXA },
-    columnWidths: riskColWidths,
+    columnWidths: [2200, 5200, 3600],
     rows: [
       new TableRow({
         children: [
@@ -266,167 +574,243 @@ export async function downloadPolicyDocx(
             bold: true,
             span: 3,
             align: AlignmentType.CENTER,
-            fill: "DCE6F1",
-            size: SIZE_HEADER,
+            fill: "D6E3F0",
+            size: SIZE_SECTION,
           }),
         ],
       }),
       new TableRow({
         children: [
-          cell(" ", riskColWidths[0], { fill: "F2F2F2" }),
-          cell("Risk location address", riskColWidths[1], {
-            bold: true,
-            fill: "F2F2F2",
-          }),
-          cell("Occupancy", riskColWidths[2], { bold: true, fill: "F2F2F2" }),
+          cell(" ", 2200, { fill: "EEF2F7" }),
+          cell("Risk location address", 5200, { bold: true, fill: "EEF2F7" }),
+          cell("Occupancy", 3600, { bold: true, fill: "EEF2F7" }),
         ],
       }),
       ...locations.map(
         (loc, i) =>
           new TableRow({
             children: [
-              cell(`Location ${i + 1}`, riskColWidths[0], { bold: true }),
+              cell(`Location ${i + 1}`, 2200, { bold: true }),
               cell(
                 `${loc.address}${loc.pincode ? ` - ${loc.pincode}` : ""}`,
-                riskColWidths[1],
+                5200,
               ),
-              cell(loc.occupancy || "-", riskColWidths[2]),
+              cell(loc.occupancy || "-", 3600),
             ],
           }),
       ),
     ],
   });
 
-  const scheduleRows: TableRow[] = [
-    new TableRow({
-      children: [
-        cell(" ", sectionW, { fill: "F2F2F2" }),
-        cell(" ", fieldW, { fill: "F2F2F2" }),
-        ...locations.map((_, i) =>
-          cell(`Location ${i + 1}`, locWidths[i], {
-            bold: true,
-            align: AlignmentType.CENTER,
-            fill: "F2F2F2",
-          }),
-        ),
-      ],
-    }),
-    siRow(
+  const fireRows: TableRow[] = [
+    sectionStartRow(
+      "Section 1 - Fire",
       "Building SI",
       locations.map((l) => l.building_si),
-      "Section 1 - Fire",
     ),
-    siRow(
+    sectionContinueRow(
       "Plant and machinery SI",
       locations.map((l) => l.plant_machinery_si),
     ),
-    siRow(
+    sectionContinueRow(
       "Furniture Fixtures SI",
       locations.map((l) => l.furniture_si),
     ),
-    siRow(
+    sectionContinueRow(
       "Plate glass SI",
       locations.map((l) => l.plate_glass_si),
     ),
-    siRow(
+    sectionContinueRow(
       "Neon sign SI",
       locations.map((l) => l.neon_sign_si),
     ),
-    siRow(
+    sectionContinueRow(
       "Stocks SI",
       locations.map((l) =>
         input.floater_cover.enabled ? "As per floater" : l.stocks_si,
       ),
     ),
-    siRow(
+    sectionContinueRow(
       "Total SI",
       locations.map((l) => locationTotalSI(l)),
     ),
-    spanRow("", "Fire Floater", fireFloater),
-    spanRow("", "Terrorism", terrorism),
-    burglaryOpted
-      ? siRow(
+    spanSectionRow("", "Fire Floater", fireFloater, "continue"),
+    spanSectionRow("", "Terrorism", terrorism, "continue"),
+  ];
+
+  const burglaryRows: TableRow[] = burglaryOpted
+    ? [
+        sectionStartRow(
+          "Section 2 – Burglary (as covered under fire section)",
           "Sum Insured",
           locations.map((l) => locationTotalSI(l)),
-          "Section 2 – Burglary (as covered under fire section)",
-        )
-      : spanRow("Section 2 – Burglary", "Sum Insured", COVER_NOT_OPTED),
-    mbdOpted
-      ? siRow(
+        ),
+      ]
+    : [spanSectionRow("Section 2 – Burglary", "Sum Insured", COVER_NOT_OPTED)];
+
+  const mbdRows: TableRow[] = mbdOpted
+    ? [
+        sectionStartRow(
+          "Section 3 – MBD/EEI",
           "Sum Insured",
           locations.map((l) => l.plant_machinery_si),
-          "Section 3 – MBD/EEI",
-        )
-      : spanRow("Section 3 – MBD/EEI", "Sum Insured", COVER_NOT_OPTED),
-    plateOpted
-      ? siRow(
+        ),
+      ]
+    : [spanSectionRow("Section 3 – MBD/EEI", "Sum Insured", COVER_NOT_OPTED)];
+
+  const plateRows: TableRow[] = plateOpted
+    ? [
+        sectionStartRow(
+          "Section 4 – Plate glass",
           "Sum Insured",
           locations.map((l) => l.plate_glass_si),
+        ),
+      ]
+    : [
+        spanSectionRow(
           "Section 4 – Plate glass",
-        )
-      : spanRow("Section 4 – Plate glass", "Sum Insured", COVER_NOT_OPTED),
-    neonOpted
-      ? siRow(
+          "Sum Insured",
+          COVER_NOT_OPTED,
+        ),
+      ];
+
+  const neonRows: TableRow[] = neonOpted
+    ? [
+        sectionStartRow(
+          "Section 5 – Neon sign",
           "Sum Insured",
           locations.map((l) => l.neon_sign_si),
-          "Section 5 – Neon sign",
-        )
-      : spanRow("Section 5 – Neon sign", "Sum Insured", COVER_NOT_OPTED),
-    spanRow(
+        ),
+      ]
+    : [spanSectionRow("Section 5 – Neon sign", "Sum Insured", COVER_NOT_OPTED)];
+
+  const plRows = [
+    spanSectionRow(
       "Section 6 – Public liability",
       "Sum Insured",
       coverLabel(plOpted, input.sections.public_liability_si),
     ),
-    spanRow(
+  ];
+
+  const fidelityRows = [
+    spanSectionRow(
       "Section 7 - Fidelity",
       "No of permanent employees",
       fidelityOpted
         ? String(Math.round(input.sections.fidelity_employees))
         : COVER_NOT_OPTED,
+      "restart",
     ),
-    spanRow(
+    spanSectionRow(
       "",
       "Floater SI",
       coverLabel(fidelityOpted, input.sections.fidelity_floater_si),
+      "continue",
     ),
-    spanRow(
+    spanSectionRow(
       "",
       "Per employee limit",
       coverLabel(fidelityOpted, input.sections.fidelity_per_employee_limit),
+      "continue",
     ),
-    siRow(
+  ];
+
+  const moneyRows: TableRow[] = [
+    sectionStartRow(
+      "Section 8 – Money In transit",
       "Annual Carrying limit",
       locations.map((l) =>
         l.money.cover === "Opted" ? l.money.annual_carrying_limit : 0,
       ),
-      "Section 8 – Money In transit",
     ),
-    siRow(
+    sectionContinueRow(
       "Single carrying limit",
       locations.map((l) =>
         l.money.cover === "Opted" ? l.money.single_carrying_limit : 0,
       ),
     ),
-    siRow(
+    sectionContinueRow(
       "Cash in safe",
       locations.map((l) => (l.money.cover === "Opted" ? l.money.cash_in_safe : 0)),
     ),
-    siRow(
+    sectionContinueRow(
       "Cash in till",
       locations.map((l) => (l.money.cover === "Opted" ? l.money.cash_in_till : 0)),
     ),
-    spanRow("", "Terrorism", terrorism),
+    spanSectionRow("", "Terrorism", terrorism, "continue"),
   ];
 
-  const scheduleTable = new Table({
+  const scheduleHeader = new TableRow({
+    children: [
+      new TableCell({
+        borders: BORDERS,
+        width: { size: sectionW, type: WidthType.DXA },
+        shading: { fill: "1E3A8A" },
+        verticalAlign: VerticalAlign.CENTER,
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [run("Section", { bold: true, size: SIZE_SMALL, color: "FFFFFF" })],
+          }),
+        ],
+      }),
+      new TableCell({
+        borders: BORDERS,
+        width: { size: fieldW, type: WidthType.DXA },
+        shading: { fill: "1E3A8A" },
+        verticalAlign: VerticalAlign.CENTER,
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              run("Particulars", { bold: true, size: SIZE_SMALL, color: "FFFFFF" }),
+            ],
+          }),
+        ],
+      }),
+      ...locations.map(
+        (_, i) =>
+          new TableCell({
+            borders: BORDERS,
+            width: { size: locWidths[i], type: WidthType.DXA },
+            shading: { fill: "1E3A8A" },
+            verticalAlign: VerticalAlign.CENTER,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  run(`Location ${i + 1}`, {
+                    bold: true,
+                    size: SIZE_SMALL,
+                    color: "FFFFFF",
+                  }),
+                ],
+              }),
+            ],
+          }),
+      ),
+    ],
+  });
+
+  const scheduleTableFinal = new Table({
     width: { size: PAGE_WIDTH, type: WidthType.DXA },
     columnWidths: scheduleColWidths,
-    rows: scheduleRows,
+    rows: [
+      scheduleHeader,
+      ...fireRows,
+      ...burglaryRows,
+      ...mbdRows,
+      ...plateRows,
+      ...neonRows,
+      ...plRows,
+      ...fidelityRows,
+      ...moneyRows,
+    ],
   });
 
   const deductiblesTable = new Table({
     width: { size: PAGE_WIDTH, type: WidthType.DXA },
-    columnWidths: deductibleColWidths,
+    columnWidths: [3500, 7500],
     rows: [
       new TableRow({
         children: [
@@ -434,8 +818,8 @@ export async function downloadPolicyDocx(
             bold: true,
             span: 2,
             align: AlignmentType.CENTER,
-            fill: "DCE6F1",
-            size: SIZE_HEADER,
+            fill: "D6E3F0",
+            size: SIZE_SECTION,
           }),
         ],
       }),
@@ -461,20 +845,124 @@ export async function downloadPolicyDocx(
         ([label, value]) =>
           new TableRow({
             children: [
-              cell(label, deductibleColWidths[0], { bold: true }),
-              cell(value, deductibleColWidths[1]),
+              cell(label, 3500, { bold: true }),
+              cell(value, 7500),
             ],
           }),
       ),
     ],
   });
 
+  const definitionsTable = new Table({
+    width: { size: PAGE_WIDTH, type: WidthType.DXA },
+    columnWidths: [3500, 7500],
+    rows: [
+      new TableRow({
+        children: [
+          cell("Definitions", PAGE_WIDTH, {
+            bold: true,
+            span: 2,
+            align: AlignmentType.CENTER,
+            fill: "D6E3F0",
+            size: SIZE_SECTION,
+          }),
+        ],
+      }),
+      ...(
+        [
+          [
+            "Building",
+            "Building incl Plinth, foundation, Basement, compound Walls, Gates & other civil structure pertaining to Insured within the premises.",
+          ],
+          [
+            "Plant & Machinery",
+            "Plant & Machinery inc Service equipments, Computers, Printers and Office equipments.",
+          ],
+          [
+            "Furniture, Fixtures, Fittings and other contents",
+            "Furnitures, Fixtures, Fittings and others contents (exc equipments).",
+          ],
+          ["Plate glass", "Plate glass only."],
+          ["Neon sign", "Neon sign only."],
+          [
+            "Stocks",
+            "Stocks means all kinds of vehicles (new vehicles, service vehicles), spares and lubricants stored within the premises.",
+          ],
+        ] as const
+      ).map(
+        ([label, value]) =>
+          new TableRow({
+            children: [
+              cell(label, 3500, { bold: true }),
+              cell(value, 7500),
+            ],
+          }),
+      ),
+    ],
+  });
+
+  const conditionsBlocks = [
+    p("Conditions", {
+      bold: true,
+      size: SIZE_SECTION,
+      before: 120,
+      after: 60,
+      color: "1E3A8A",
+    }),
+    p("1) Fire section:", { bold: true }),
+    p("a. Sum Insured should be less than 50Crs of all Insurable assets in the risk location."),
+    p("b. Terms and conditions as per UVUS policy.", { after: 60 }),
+    p("2) Burglary:", { bold: true }),
+    p("a. Theft and RSMD included."),
+    p(
+      "b. CCTV must be installed/ Watch and ward to be employed at the risk locations.",
+      { after: 60 },
+    ),
+    p("3) Money:", { bold: true }),
+    p("a. Transit from dealer place to Bank and vice versa."),
+    p(
+      "b. Cash carrying must be done through an authorised permanent employee of Insured.",
+    ),
+    p(
+      "c. Warranted that cash in transit above 1 lacs is carried through private transport.",
+    ),
+    p(
+      "d. Warranted that keys are not kept in the shop premises after business hours & also the cash lying outside is to be kept in safe after business hours (Safe means heavy duty metallic lockable container).",
+    ),
+    p("e. Transit of money should take place within 50kms limit only."),
+    p(
+      "f. Cash Carried in either in briefcase, Boxes, Bags and in any other types of carrying bags.",
+    ),
+    p("g. Proper accounting system is available.", { after: 60 }),
+    p("4) Fidelity:", { bold: true }),
+    p("a. Only permanent employees are covered."),
+    p(
+      "b. Loss of property entrusted to any person other than the designated employee of the Insured is not covered.",
+      { after: 60 },
+    ),
+    p("5) MBD and EEI:", { bold: true }),
+    p("a. All machineries and equipments are covered.", { after: 60 }),
+    p(
+      "All other terms and conditions as per the respective standard policies.",
+      { after: 80 },
+    ),
+    p("Declaration", {
+      bold: true,
+      size: SIZE_SECTION,
+      after: 40,
+      color: "1E3A8A",
+    }),
+    p("I hereby declare that:"),
+    p("1. All information provided by me is true."),
+    p("2. There are nil claims in the past 3 years."),
+    p("3. We are Insuring all the assets and no selection is done.", {
+      after: 80,
+    }),
+  ];
+
   const premiumTable = new Table({
-    width: {
-      size: premiumColWidths[0] + premiumColWidths[1],
-      type: WidthType.DXA,
-    },
-    columnWidths: premiumColWidths,
+    width: { size: 4500, type: WidthType.DXA },
+    columnWidths: [2200, 2300],
     rows: (
       [
         ["Premium:", fmtMoney(net)],
@@ -486,66 +974,37 @@ export async function downloadPolicyDocx(
       ([label, value]) =>
         new TableRow({
           children: [
-            cell(label, premiumColWidths[0], { bold: true, fill: "F2F2F2" }),
-            cell(value, premiumColWidths[1], { align: AlignmentType.RIGHT }),
+            cell(label, 2200, { bold: true, fill: "EEF2F7" }),
+            cell(value, 2300, { align: AlignmentType.RIGHT, bold: true }),
           ],
         }),
     ),
   });
 
-  const footer = new Footer({
-    children: [
-      new Table({
-        width: { size: PAGE_WIDTH, type: WidthType.DXA },
-        columnWidths: [7000, 4000],
-        rows: [
-          new TableRow({
-            children: [
-              new TableCell({
-                borders: FOOTER_TOP,
-                width: { size: 7000, type: WidthType.DXA },
-                children: [
-                  new Paragraph({
-                    spacing: { before: 80 },
-                    children: [
-                      run(`Policy No.: ${details.policyNumber}`, {
-                        bold: true,
-                        size: SIZE_BODY,
-                      }),
-                    ],
-                  }),
-                ],
-              }),
-              new TableCell({
-                borders: FOOTER_TOP,
-                width: { size: 4000, type: WidthType.DXA },
-                children: [
-                  new Paragraph({
-                    alignment: AlignmentType.RIGHT,
-                    spacing: { before: 80 },
-                    children: [
-                      run("Page ", { size: SIZE_BODY }),
-                      new TextRun({
-                        children: [PageNumber.CURRENT],
-                        font: FONT,
-                        size: SIZE_BODY,
-                      }),
-                      run(" of ", { size: SIZE_BODY }),
-                      new TextRun({
-                        children: [PageNumber.TOTAL_PAGES],
-                        font: FONT,
-                        size: SIZE_BODY,
-                      }),
-                    ],
-                  }),
-                ],
-              }),
-            ],
-          }),
-        ],
-      }),
-    ],
+  const signatureBlock = [
+    p("For and On behalf of", { before: 200 }),
+    p("United India Insurance Co. Ltd.", {
+      bold: true,
+      size: SIZE_SECTION,
+      after: 80,
+    }),
+    new Paragraph({
+      spacing: { before: 60, after: 40 },
+      children: [
+        new ImageRun({
+          type: "png",
+          data: signatureBytes,
+          transformation: { width: 160, height: 96 },
+        }),
+      ],
+    }),
+  ];
+
+  const logoHeader = new Header({
+    children: [logoParagraph(logoBytes, 80, 60)],
   });
+
+  const footer = policyFooter(details.policyNumber);
 
   const doc = new Document({
     styles: {
@@ -561,78 +1020,61 @@ export async function downloadPolicyDocx(
           page: {
             size: { width: 11900, height: 16840 },
             margin: {
-              top: 560,
-              right: 360,
-              bottom: 720,
-              left: 360,
+              top: 500,
+              right: 500,
+              bottom: 700,
+              left: 500,
               footer: 400,
             },
           },
         },
         footers: { default: footer },
+        children: coverChildren,
+      },
+      {
+        properties: {
+          page: {
+            size: { width: 11900, height: 16840 },
+            margin: {
+              top: 900,
+              right: 400,
+              bottom: 700,
+              left: 400,
+              header: 300,
+              footer: 400,
+            },
+          },
+        },
+        headers: { default: logoHeader },
+        footers: { default: footer },
         children: [
-          p("UNITED INDIA INSURANCE COMPANY LIMITED", {
-            bold: true,
-            center: true,
-            size: SIZE_TITLE,
-          }),
-          p("FAGUN CHAMBERS, NO. 1 & 2, II FLOOR, 26A, ETHIRAJ SALAI,", {
-            center: true,
-          }),
-          p("EGMORE, CHENNAI 600008 TAMIL NADU", { center: true }),
-          p("PHONE: (044) 25384955", { center: true, after: 120 }),
-          p(
-            `SPECIAL CONTINGENCY POLICY  POLICY NO.:${details.policyNumber}  UIN NO.IRDAN545RP0297V01200708`,
-            { bold: true, center: true, size: SIZE_HEADER },
-          ),
-          p("PERIOD OF INSURANCE", {
-            bold: true,
-            center: true,
-            size: SIZE_HEADER,
-          }),
-          p(`From ${startText} To ${endText}`, {
-            bold: true,
-            center: true,
-            after: 120,
-          }),
-          p("Insured", { bold: true, center: true, size: SIZE_HEADER }),
-          p(input.insured_name.toUpperCase(), {
-            bold: true,
-            center: true,
-            size: SIZE_TITLE,
-          }),
-          p(input.communication_address || "-", { center: true, after: 120 }),
-          p("Agent Name: HARITA INSURANCE BROKING LLP"),
-          p("Agent Code: BRC0000921"),
-          p(
-            'The genuineness of the policy can be verified through "Verify Your Policy" link at www.uiic.co.in.',
-          ),
-          p(
-            "For any Information, Service Requests, Claim intimation and Grievances please write to 013100@uiic.co.in",
-          ),
-          p(
-            "Download Customer App (www.uiic.co.in). REGD. & HEAD OFFICE, 24, WHITES ROAD, CHENNAI - 600014.",
-          ),
-          p("Website: http://www.uiic.co.in", { after: 120 }),
           p("SPECIAL CONTINGENCY POLICY SCHEDULE", {
             bold: true,
             center: true,
-            size: SIZE_TITLE,
+            size: SIZE_POLICY_TITLE,
             after: 120,
+            color: "1E3A8A",
           }),
           metaTable,
           p(""),
           riskTable,
           p(""),
-          scheduleTable,
+          scheduleTableFinal,
           p(""),
           deductiblesTable,
           p(""),
-          p("Remarks", { bold: true, size: SIZE_HEADER }),
+          definitionsTable,
+          ...conditionsBlocks,
+          p("Remarks", {
+            bold: true,
+            size: SIZE_SECTION,
+            after: 40,
+            color: "1E3A8A",
+          }),
           p(
             "Only Air conditioners are covered under Plant and Machinery Sum Insured of Fire section, Burglary and MBD section",
           ),
-          p("Money in transit", { bold: true }),
+          p("Money in transit", { bold: true, before: 60 }),
           p("a. Transit from dealer place to Bank and vice versa"),
           p(
             "b. Cash carrying must be done through an authorized permanent employee of Insured.",
@@ -653,18 +1095,19 @@ export async function downloadPolicyDocx(
           p(""),
           p(
             "We hereby declare that though our aggregate turnover in any preceding financial year from 2017-18 onwards is more than the aggregate turnover notified under sub-rule (4) of rule 48, we are not required to prepare an invoice in terms of the provisions of the said sub-rule.",
+            { size: SIZE_SMALL },
           ),
           p(""),
           p(
             "Anti Money Laundering Clause:-In the event of a claim under the policy exceeding 1 lakh or a claim for refund of premium exceeding 1 lakh, the insured will comply with the provisions of AML policy of the company. The AML policy is available in all our operating offices as well as Company's web site.",
+            { size: SIZE_SMALL },
           ),
           p(""),
           p(
             "LET US JOIN THE FIGHT AGAINST CORRUPTION. PLEASE TAKE THE PLEDGE AT https://pledge.cvc.nic.in.",
+            { size: SIZE_SMALL },
           ),
-          p(""),
-          p("For and On behalf of"),
-          p("United India Insurance Co. Ltd.", { bold: true, size: SIZE_HEADER }),
+          ...signatureBlock,
         ],
       },
     ],
