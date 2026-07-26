@@ -172,7 +172,7 @@ async function fetchImage(path: string): Promise<Uint8Array> {
   return new Uint8Array(await response.arrayBuffer());
 }
 
-function logoParagraph(logoBytes: Uint8Array, width = 90, height = 68, after = 120) {
+function logoParagraph(logoBytes: Uint8Array, width = 120, height = 63, after = 120) {
   return new Paragraph({
     alignment: AlignmentType.CENTER,
     spacing: { after },
@@ -186,25 +186,28 @@ function logoParagraph(logoBytes: Uint8Array, width = 90, height = 68, after = 1
   });
 }
 
-/** Full-width centered content card used on the cover page. */
+/** Centered content card (used for Period of Insurance on the cover). */
 function coverCard(
   children: Paragraph[],
-  opts?: { fill?: string; strongBorder?: boolean },
+  opts?: { fill?: string; strongBorder?: boolean; width?: number },
 ) {
+  const width = opts?.width ?? Math.floor(PAGE_WIDTH * 0.72);
   return new Table({
-    width: { size: PAGE_WIDTH, type: WidthType.DXA },
-    columnWidths: [PAGE_WIDTH],
+    width: { size: width, type: WidthType.DXA },
+    columnWidths: [width],
+    alignment: AlignmentType.CENTER,
     rows: [
       new TableRow({
         children: [
           new TableCell({
             borders: opts?.strongBorder ? BOX_BORDERS : BORDERS,
-            width: { size: PAGE_WIDTH, type: WidthType.DXA },
+            width: { size: width, type: WidthType.DXA },
+            verticalAlign: VerticalAlign.CENTER,
             shading: { fill: opts?.fill ?? "FFFFFF" },
             children: [
-              new Paragraph({ spacing: { before: 140 }, children: [] }),
+              new Paragraph({ spacing: { before: 160 }, children: [] }),
               ...children,
-              new Paragraph({ spacing: { after: 140 }, children: [] }),
+              new Paragraph({ spacing: { after: 160 }, children: [] }),
             ],
           }),
         ],
@@ -213,8 +216,23 @@ function coverCard(
   });
 }
 
-function spacer(after = 280) {
-  return new Paragraph({ spacing: { after }, children: [] });
+function coverDivider() {
+  return new Paragraph({
+    alignment: AlignmentType.CENTER,
+    border: {
+      bottom: { style: BorderStyle.SINGLE, size: 12, color: "1E3A8A", space: 8 },
+    },
+    spacing: { before: 80, after: 200 },
+    children: [],
+  });
+}
+
+function spacer(after = 240) {
+  return new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { after },
+    children: [],
+  });
 }
 
 function policyFooter(policyNumber: string) {
@@ -403,14 +421,14 @@ export async function downloadPolicyDocx(
     });
   }
 
-  // ---- Cover page (page 1): centered text; table only for period of insurance ----
+  // ---- Cover page (page 1): centered layout; table only for period of insurance ----
   const periodTable = coverCard(
     [
       p("PERIOD OF INSURANCE", {
         bold: true,
         center: true,
         size: COVER_LINE,
-        after: 120,
+        after: 140,
       }),
       p(`From ${startText}`, {
         bold: true,
@@ -425,110 +443,113 @@ export async function downloadPolicyDocx(
         after: 40,
       }),
     ],
-    { fill: "F0F5FF", strongBorder: true },
+    { fill: "F0F5FF", strongBorder: true, width: 7800 },
   );
 
   const coverChildren = [
-    logoParagraph(logoBytes, 260, 200, 320),
+    spacer(120),
+    logoParagraph(logoBytes, 300, 158, 200),
     p("UNITED INDIA INSURANCE COMPANY LIMITED", {
       bold: true,
       center: true,
       size: COVER_COMPANY,
-      after: 160,
+      after: 120,
     }),
     p("FAGUN CHAMBERS, NO. 1 & 2, II FLOOR, 26A, ETHIRAJ SALAI,", {
       center: true,
       size: COVER_ADDRESS,
-      after: 80,
+      after: 40,
     }),
     p("EGMORE, CHENNAI 600008 TAMIL NADU", {
       center: true,
       size: COVER_ADDRESS,
-      after: 80,
+      after: 40,
     }),
     p("PHONE: (044) 25384955", {
       center: true,
       size: COVER_ADDRESS,
-      after: 280,
+      after: 80,
     }),
+    coverDivider(),
     p("SPECIAL CONTINGENCY POLICY", {
       bold: true,
       center: true,
       size: COVER_TITLE,
-      after: 160,
+      after: 140,
     }),
     p(`POLICY NO.: ${details.policyNumber}`, {
       bold: true,
       center: true,
       size: COVER_LINE,
-      after: 100,
+      after: 80,
     }),
     p(`UIN NO.: ${UIN}`, {
       bold: true,
       center: true,
       size: COVER_LINE,
-      after: 280,
+      after: 200,
     }),
     periodTable,
-    spacer(320),
+    spacer(280),
+    coverDivider(),
     p("Insured", {
       bold: true,
       center: true,
       size: COVER_LINE,
-      after: 120,
+      after: 100,
     }),
     p(input.insured_name.toUpperCase(), {
       bold: true,
       center: true,
       size: COVER_TITLE,
-      after: 120,
+      after: 100,
     }),
     p(input.communication_address || "-", {
       center: true,
       size: COVER_ADDRESS,
-      after: 100,
+      after: 80,
     }),
     ...(input.gstin_number
       ? [
           p(`GSTIN: ${input.gstin_number}`, {
             center: true,
             size: COVER_LINE,
-            after: 200,
+            after: 160,
           }),
         ]
-      : [spacer(120)]),
-    spacer(200),
+      : [spacer(100)]),
+    spacer(160),
     p("Agent Name: HARITA INSURANCE BROKING LLP", {
       center: true,
       size: COVER_LINE,
-      after: 100,
+      after: 80,
     }),
     p("Agent Code: BRC0000921", {
       center: true,
       size: COVER_LINE,
-      after: 100,
+      after: 80,
     }),
     ...(details.previousPolicyNumber
       ? [
           p(`Previous Policy No.: ${details.previousPolicyNumber}`, {
             center: true,
             size: COVER_LINE,
-            after: 200,
+            after: 160,
           }),
         ]
-      : [spacer(120)]),
-    spacer(280),
+      : [spacer(80)]),
+    coverDivider(),
     p(
       'The genuineness of the policy can be verified through "Verify Your Policy" link at www.uiic.co.in.',
-      { center: true, size: SIZE_BODY, after: 100 },
+      { center: true, size: SIZE_BODY, after: 80 },
     ),
     p(
       "For any Information, Service Requests, Claim intimation and Grievances please write to 013100@uiic.co.in",
-      { center: true, size: SIZE_BODY, after: 100 },
+      { center: true, size: SIZE_BODY, after: 80 },
     ),
     p(
       "Download Customer App (www.uiic.co.in). REGD. & HEAD OFFICE, 24, WHITES ROAD, CHENNAI - 600014.",
-      { center: true, size: SIZE_BODY, after: 80 },
+      { center: true, size: SIZE_BODY, after: 60 },
     ),
     p("Website: http://www.uiic.co.in", {
       center: true,
@@ -1051,7 +1072,7 @@ export async function downloadPolicyDocx(
   ];
 
   const logoHeader = new Header({
-    children: [logoParagraph(logoBytes, 110, 84)],
+    children: [logoParagraph(logoBytes, 120, 63)],
   });
 
   const footer = policyFooter(details.policyNumber);
