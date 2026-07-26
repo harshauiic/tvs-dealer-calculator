@@ -230,17 +230,6 @@ function coverCard(
   });
 }
 
-function coverDivider() {
-  return new Paragraph({
-    alignment: AlignmentType.CENTER,
-    border: {
-      bottom: { style: BorderStyle.SINGLE, size: 18, color: "1E3A8A", space: 1 },
-    },
-    spacing: { before: 60, after: 120 },
-    children: [run(" ", { size: 4 })],
-  });
-}
-
 function spacer(after = 120) {
   return new Paragraph({
     alignment: AlignmentType.CENTER,
@@ -254,15 +243,16 @@ function policyFooter(policyNumber: string) {
     children: [
       new Table({
         width: { size: PAGE_WIDTH, type: WidthType.DXA },
-        columnWidths: [7000, 4000],
+        columnWidths: [5500, 5500],
         rows: [
           new TableRow({
             children: [
               new TableCell({
                 borders: FOOTER_TOP,
-                width: { size: 7000, type: WidthType.DXA },
+                width: { size: 5500, type: WidthType.DXA },
                 children: [
                   new Paragraph({
+                    alignment: AlignmentType.LEFT,
                     spacing: { before: 60 },
                     children: [
                       run(`Policy No.: ${policyNumber}`, {
@@ -275,7 +265,7 @@ function policyFooter(policyNumber: string) {
               }),
               new TableCell({
                 borders: FOOTER_TOP,
-                width: { size: 4000, type: WidthType.DXA },
+                width: { size: 5500, type: WidthType.DXA },
                 children: [
                   new Paragraph({
                     alignment: AlignmentType.RIGHT,
@@ -435,22 +425,17 @@ export async function downloadPolicyDocx(
     });
   }
 
-  // ---- Cover page (page 1): fit on a single page, fully center-aligned ----
+  // ---- Cover page (page 1): layout modeled on templates/headerRef.docx ----
+  // Logo is in the page header (centered) on every page — not repeated in body.
   const periodTable = coverCard(
     [
       p("PERIOD OF INSURANCE", {
         bold: true,
         center: true,
         size: COVER_LINE,
-        after: 80,
+        after: 60,
       }),
-      p(`From ${startText}`, {
-        bold: true,
-        center: true,
-        size: COVER_ADDRESS,
-        after: 40,
-      }),
-      p(`To ${endText}`, {
+      p(`From ${startText} To ${endText}`, {
         bold: true,
         center: true,
         size: COVER_ADDRESS,
@@ -460,14 +445,12 @@ export async function downloadPolicyDocx(
     { fill: "F0F5FF", strongBorder: true, width: PAGE_WIDTH },
   );
 
-  // Flat children (no nested frame) so Word does not spill an empty page 2.
   const coverChildren = [
-    logoParagraph(logoBytes, 200, 154, 100, AlignmentType.CENTER),
     p("UNITED INDIA INSURANCE COMPANY LIMITED", {
       bold: true,
       center: true,
       size: COVER_COMPANY,
-      after: 60,
+      after: 80,
     }),
     p("FAGUN CHAMBERS, NO. 1 & 2, II FLOOR, 26A, ETHIRAJ SALAI,", {
       center: true,
@@ -482,41 +465,36 @@ export async function downloadPolicyDocx(
     p("PHONE: (044) 25384955", {
       center: true,
       size: COVER_ADDRESS,
-      after: 60,
+      after: 120,
     }),
-    coverDivider(),
     p("SPECIAL CONTINGENCY POLICY", {
       bold: true,
       center: true,
       size: COVER_TITLE,
-      after: 80,
+      after: 60,
     }),
-    p(`POLICY NO.: ${details.policyNumber}`, {
-      bold: true,
-      center: true,
-      size: COVER_LINE,
-      after: 40,
-    }),
-    p(`UIN NO.: ${UIN}`, {
-      bold: true,
-      center: true,
-      size: COVER_LINE,
-      after: 100,
-    }),
+    p(
+      `POLICY NO.: ${details.policyNumber}    UIN NO.: ${UIN}`,
+      {
+        bold: true,
+        center: true,
+        size: COVER_LINE,
+        after: 140,
+      },
+    ),
     periodTable,
-    spacer(100),
-    coverDivider(),
+    spacer(160),
     p("Insured", {
       bold: true,
       center: true,
       size: COVER_LINE,
-      after: 40,
+      after: 60,
     }),
     p(input.insured_name.toUpperCase(), {
       bold: true,
       center: true,
       size: COVER_TITLE,
-      after: 40,
+      after: 60,
     }),
     p(input.communication_address || "-", {
       center: true,
@@ -528,41 +506,42 @@ export async function downloadPolicyDocx(
           p(`GSTIN: ${input.gstin_number}`, {
             center: true,
             size: COVER_LINE,
-            after: 60,
+            after: 80,
           }),
         ]
-      : [spacer(40)]),
-    p("Agent Name: HARITA INSURANCE BROKING LLP", {
+      : [spacer(60)]),
+    spacer(80),
+    p(`Agent Name\t: HARITA INSURANCE BROKING LLP`, {
       center: true,
       size: COVER_LINE,
-      after: 30,
+      after: 40,
     }),
-    p("Agent Code: BRC0000921", {
+    p(`Agent Code\t: BRC0000921`, {
       center: true,
       size: COVER_LINE,
-      after: 30,
+      after: 40,
     }),
     ...(details.previousPolicyNumber
       ? [
-          p(`Previous Policy No.: ${details.previousPolicyNumber}`, {
+          p(`Previous Policy No.\t: ${details.previousPolicyNumber}`, {
             center: true,
             size: COVER_LINE,
-            after: 60,
+            after: 100,
           }),
         ]
-      : [spacer(40)]),
-    coverDivider(),
+      : [spacer(80)]),
+    spacer(120),
     p(
       'The genuineness of the policy can be verified through "Verify Your Policy" link at www.uiic.co.in.',
-      { center: true, size: SIZE_SMALL, after: 40 },
+      { center: true, size: SIZE_SMALL, after: 50 },
     ),
     p(
       "For any Information, Service Requests, Claim intimation and Grievances please write to 013100@uiic.co.in",
-      { center: true, size: SIZE_SMALL, after: 40 },
+      { center: true, size: SIZE_SMALL, after: 50 },
     ),
     p(
       "Download Customer App (www.uiic.co.in). REGD. & HEAD OFFICE, 24, WHITES ROAD, CHENNAI - 600014.",
-      { center: true, size: SIZE_SMALL, after: 30 },
+      { center: true, size: SIZE_SMALL, after: 40 },
     ),
     p("Website: http://www.uiic.co.in", {
       center: true,
@@ -987,48 +966,63 @@ export async function downloadPolicyDocx(
   const conditionsBlocks = [
     p("Conditions", {
       bold: true,
+      center: true,
       size: SIZE_SECTION,
       before: 120,
       after: 60,
       color: "1E3A8A",
     }),
-    p("1) Fire section:", { bold: true }),
-    p("a. Sum Insured should be less than 50Crs of all Insurable assets in the risk location."),
-    p("b. Terms and conditions as per UVUS policy.", { after: 60 }),
-    p("2) Burglary:", { bold: true }),
-    p("a. Theft and RSMD included."),
+    p("1) Fire section:", { bold: true, center: true }),
+    p(
+      "a. Sum Insured should be less than 50Crs of all Insurable assets in the risk location.",
+      { center: true },
+    ),
+    p("b. Terms and conditions as per UVUS policy.", {
+      center: true,
+      after: 60,
+    }),
+    p("2) Burglary:", { bold: true, center: true }),
+    p("a. Theft and RSMD included.", { center: true }),
     p(
       "b. CCTV must be installed/ Watch and ward to be employed at the risk locations.",
-      { after: 60 },
+      { center: true, after: 60 },
     ),
-    p("3) Money:", { bold: true }),
-    p("a. Transit from dealer place to Bank and vice versa."),
+    p("3) Money:", { bold: true, center: true }),
+    p("a. Transit from dealer place to Bank and vice versa.", { center: true }),
     p(
       "b. Cash carrying must be done through an authorised permanent employee of Insured.",
+      { center: true },
     ),
     p(
       "c. Warranted that cash in transit above 1 lacs is carried through private transport.",
+      { center: true },
     ),
     p(
       "d. Warranted that keys are not kept in the shop premises after business hours & also the cash lying outside is to be kept in safe after business hours (Safe means heavy duty metallic lockable container).",
+      { center: true },
     ),
-    p("e. Transit of money should take place within 50kms limit only."),
+    p("e. Transit of money should take place within 50kms limit only.", {
+      center: true,
+    }),
     p(
       "f. Cash Carried in either in briefcase, Boxes, Bags and in any other types of carrying bags.",
+      { center: true },
     ),
-    p("g. Proper accounting system is available.", { after: 60 }),
-    p("4) Fidelity:", { bold: true }),
-    p("a. Only permanent employees are covered."),
+    p("g. Proper accounting system is available.", {
+      center: true,
+      after: 60,
+    }),
+    p("4) Fidelity:", { bold: true, center: true }),
+    p("a. Only permanent employees are covered.", { center: true }),
     p(
       "b. Loss of property entrusted to any person other than the designated employee of the Insured is not covered.",
-      { after: 60 },
+      { center: true, after: 60 },
     ),
-    p("5) MBD and EEI:", { bold: true }),
-    p("a. All machineries and equipments are covered.", { after: 60 }),
-    p(
-      "All other terms and conditions as per the respective standard policies.",
-      { after: 120 },
-    ),
+    p("5) MBD and EEI:", { bold: true, center: true }),
+    p("a. All machineries and equipments are covered.", {
+      center: true,
+      after: 120,
+    }),
   ];
 
   const premiumTable = new Table({
@@ -1086,7 +1080,7 @@ export async function downloadPolicyDocx(
   ];
 
   const logoHeader = new Header({
-    children: [logoParagraph(logoBytes, 100, 77, 60, AlignmentType.CENTER)],
+    children: [logoParagraph(logoBytes, 110, 84, 40, AlignmentType.CENTER)],
   });
 
   const footer = policyFooter(details.policyNumber);
@@ -1105,14 +1099,16 @@ export async function downloadPolicyDocx(
           page: {
             size: { width: 11900, height: 16840 },
             margin: {
-              top: 500,
+              top: 900,
               right: 500,
               bottom: 700,
               left: 500,
+              header: 300,
               footer: 400,
             },
           },
         },
+        headers: { default: logoHeader },
         footers: { default: footer },
         children: coverChildren,
       },
