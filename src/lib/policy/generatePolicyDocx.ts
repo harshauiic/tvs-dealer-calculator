@@ -33,10 +33,10 @@ const SIZE_SMALL = 16;
 const SIZE_POLICY_TITLE = 24;
 const SIZE_SECTION = 20;
 /** Cover-page typography (larger than schedule pages). */
-const COVER_COMPANY = 36;
-const COVER_ADDRESS = 24;
-const COVER_TITLE = 32;
-const COVER_LINE = 26;
+const COVER_COMPANY = 32;
+const COVER_ADDRESS = 20;
+const COVER_TITLE = 28;
+const COVER_LINE = 22;
 const UIN = "IRDAN545RP0297V01200708";
 const COVER_NOT_OPTED = "COVER NOT OPTED";
 
@@ -177,7 +177,7 @@ function logoParagraph(
   width = 100,
   height = 77,
   after = 120,
-  align: Align = AlignmentType.LEFT,
+  align: Align = AlignmentType.CENTER,
 ) {
   return new Paragraph({
     alignment: align,
@@ -192,7 +192,7 @@ function logoParagraph(
   });
 }
 
-/** Period-of-insurance box; full width so it reads as centered on the cover. */
+/** Period-of-insurance box on the cover (full width, centered text). */
 function coverCard(
   children: Paragraph[],
   opts?: { fill?: string; strongBorder?: boolean; width?: number },
@@ -213,13 +213,13 @@ function coverCard(
             children: [
               new Paragraph({
                 alignment: AlignmentType.CENTER,
-                spacing: { before: 160 },
+                spacing: { before: 100 },
                 children: [],
               }),
               ...children,
               new Paragraph({
                 alignment: AlignmentType.CENTER,
-                spacing: { after: 160 },
+                spacing: { after: 100 },
                 children: [],
               }),
             ],
@@ -234,42 +234,18 @@ function coverDivider() {
   return new Paragraph({
     alignment: AlignmentType.CENTER,
     border: {
-      bottom: { style: BorderStyle.SINGLE, size: 12, color: "1E3A8A", space: 8 },
+      bottom: { style: BorderStyle.SINGLE, size: 18, color: "1E3A8A", space: 1 },
     },
-    spacing: { before: 80, after: 200 },
-    children: [],
+    spacing: { before: 60, after: 120 },
+    children: [run(" ", { size: 4 })],
   });
 }
 
-function spacer(after = 240) {
+function spacer(after = 120) {
   return new Paragraph({
     alignment: AlignmentType.CENTER,
     spacing: { after },
     children: [],
-  });
-}
-
-/** Wrap cover content in a full-width borderless cell so Word keeps it centered. */
-function coverFrame(children: Array<Paragraph | Table>) {
-  return new Table({
-    width: { size: PAGE_WIDTH, type: WidthType.DXA },
-    columnWidths: [PAGE_WIDTH],
-    rows: [
-      new TableRow({
-        children: [
-          new TableCell({
-            borders: {
-              top: NONE,
-              bottom: NONE,
-              left: NONE,
-              right: NONE,
-            },
-            width: { size: PAGE_WIDTH, type: WidthType.DXA },
-            children,
-          }),
-        ],
-      }),
-    ],
   });
 }
 
@@ -459,143 +435,140 @@ export async function downloadPolicyDocx(
     });
   }
 
-  // ---- Cover page (page 1): centered layout; table only for period of insurance ----
+  // ---- Cover page (page 1): fit on a single page, fully center-aligned ----
   const periodTable = coverCard(
     [
       p("PERIOD OF INSURANCE", {
         bold: true,
         center: true,
         size: COVER_LINE,
-        after: 140,
+        after: 80,
       }),
       p(`From ${startText}`, {
         bold: true,
         center: true,
         size: COVER_ADDRESS,
-        after: 80,
+        after: 40,
       }),
       p(`To ${endText}`, {
         bold: true,
         center: true,
         size: COVER_ADDRESS,
-        after: 40,
+        after: 20,
       }),
     ],
     { fill: "F0F5FF", strongBorder: true, width: PAGE_WIDTH },
   );
 
+  // Flat children (no nested frame) so Word does not spill an empty page 2.
   const coverChildren = [
-    coverFrame([
-      spacer(80),
-      logoParagraph(logoBytes, 280, 215, 180, AlignmentType.CENTER),
-      p("UNITED INDIA INSURANCE COMPANY LIMITED", {
-        bold: true,
-        center: true,
-        size: COVER_COMPANY,
-        after: 120,
-      }),
-      p("FAGUN CHAMBERS, NO. 1 & 2, II FLOOR, 26A, ETHIRAJ SALAI,", {
-        center: true,
-        size: COVER_ADDRESS,
-        after: 40,
-      }),
-      p("EGMORE, CHENNAI 600008 TAMIL NADU", {
-        center: true,
-        size: COVER_ADDRESS,
-        after: 40,
-      }),
-      p("PHONE: (044) 25384955", {
-        center: true,
-        size: COVER_ADDRESS,
-        after: 80,
-      }),
-      coverDivider(),
-      p("SPECIAL CONTINGENCY POLICY", {
-        bold: true,
-        center: true,
-        size: COVER_TITLE,
-        after: 140,
-      }),
-      p(`POLICY NO.: ${details.policyNumber}`, {
-        bold: true,
-        center: true,
-        size: COVER_LINE,
-        after: 80,
-      }),
-      p(`UIN NO.: ${UIN}`, {
-        bold: true,
-        center: true,
-        size: COVER_LINE,
-        after: 200,
-      }),
-      periodTable,
-      spacer(240),
-      coverDivider(),
-      p("Insured", {
-        bold: true,
-        center: true,
-        size: COVER_LINE,
-        after: 100,
-      }),
-      p(input.insured_name.toUpperCase(), {
-        bold: true,
-        center: true,
-        size: COVER_TITLE,
-        after: 100,
-      }),
-      p(input.communication_address || "-", {
-        center: true,
-        size: COVER_ADDRESS,
-        after: 80,
-      }),
-      ...(input.gstin_number
-        ? [
-            p(`GSTIN: ${input.gstin_number}`, {
-              center: true,
-              size: COVER_LINE,
-              after: 160,
-            }),
-          ]
-        : [spacer(100)]),
-      spacer(160),
-      p("Agent Name: HARITA INSURANCE BROKING LLP", {
-        center: true,
-        size: COVER_LINE,
-        after: 80,
-      }),
-      p("Agent Code: BRC0000921", {
-        center: true,
-        size: COVER_LINE,
-        after: 80,
-      }),
-      ...(details.previousPolicyNumber
-        ? [
-            p(`Previous Policy No.: ${details.previousPolicyNumber}`, {
-              center: true,
-              size: COVER_LINE,
-              after: 160,
-            }),
-          ]
-        : [spacer(80)]),
-      coverDivider(),
-      p(
-        'The genuineness of the policy can be verified through "Verify Your Policy" link at www.uiic.co.in.',
-        { center: true, size: SIZE_BODY, after: 80 },
-      ),
-      p(
-        "For any Information, Service Requests, Claim intimation and Grievances please write to 013100@uiic.co.in",
-        { center: true, size: SIZE_BODY, after: 80 },
-      ),
-      p(
-        "Download Customer App (www.uiic.co.in). REGD. & HEAD OFFICE, 24, WHITES ROAD, CHENNAI - 600014.",
-        { center: true, size: SIZE_BODY, after: 60 },
-      ),
-      p("Website: http://www.uiic.co.in", {
-        center: true,
-        size: SIZE_BODY,
-        after: 40,
-      }),
-    ]),
+    logoParagraph(logoBytes, 200, 154, 100, AlignmentType.CENTER),
+    p("UNITED INDIA INSURANCE COMPANY LIMITED", {
+      bold: true,
+      center: true,
+      size: COVER_COMPANY,
+      after: 60,
+    }),
+    p("FAGUN CHAMBERS, NO. 1 & 2, II FLOOR, 26A, ETHIRAJ SALAI,", {
+      center: true,
+      size: COVER_ADDRESS,
+      after: 20,
+    }),
+    p("EGMORE, CHENNAI 600008 TAMIL NADU", {
+      center: true,
+      size: COVER_ADDRESS,
+      after: 20,
+    }),
+    p("PHONE: (044) 25384955", {
+      center: true,
+      size: COVER_ADDRESS,
+      after: 60,
+    }),
+    coverDivider(),
+    p("SPECIAL CONTINGENCY POLICY", {
+      bold: true,
+      center: true,
+      size: COVER_TITLE,
+      after: 80,
+    }),
+    p(`POLICY NO.: ${details.policyNumber}`, {
+      bold: true,
+      center: true,
+      size: COVER_LINE,
+      after: 40,
+    }),
+    p(`UIN NO.: ${UIN}`, {
+      bold: true,
+      center: true,
+      size: COVER_LINE,
+      after: 100,
+    }),
+    periodTable,
+    spacer(100),
+    coverDivider(),
+    p("Insured", {
+      bold: true,
+      center: true,
+      size: COVER_LINE,
+      after: 40,
+    }),
+    p(input.insured_name.toUpperCase(), {
+      bold: true,
+      center: true,
+      size: COVER_TITLE,
+      after: 40,
+    }),
+    p(input.communication_address || "-", {
+      center: true,
+      size: COVER_ADDRESS,
+      after: 40,
+    }),
+    ...(input.gstin_number
+      ? [
+          p(`GSTIN: ${input.gstin_number}`, {
+            center: true,
+            size: COVER_LINE,
+            after: 60,
+          }),
+        ]
+      : [spacer(40)]),
+    p("Agent Name: HARITA INSURANCE BROKING LLP", {
+      center: true,
+      size: COVER_LINE,
+      after: 30,
+    }),
+    p("Agent Code: BRC0000921", {
+      center: true,
+      size: COVER_LINE,
+      after: 30,
+    }),
+    ...(details.previousPolicyNumber
+      ? [
+          p(`Previous Policy No.: ${details.previousPolicyNumber}`, {
+            center: true,
+            size: COVER_LINE,
+            after: 60,
+          }),
+        ]
+      : [spacer(40)]),
+    coverDivider(),
+    p(
+      'The genuineness of the policy can be verified through "Verify Your Policy" link at www.uiic.co.in.',
+      { center: true, size: SIZE_SMALL, after: 40 },
+    ),
+    p(
+      "For any Information, Service Requests, Claim intimation and Grievances please write to 013100@uiic.co.in",
+      { center: true, size: SIZE_SMALL, after: 40 },
+    ),
+    p(
+      "Download Customer App (www.uiic.co.in). REGD. & HEAD OFFICE, 24, WHITES ROAD, CHENNAI - 600014.",
+      { center: true, size: SIZE_SMALL, after: 30 },
+    ),
+    p("Website: http://www.uiic.co.in", {
+      center: true,
+      size: SIZE_SMALL,
+      after: 0,
+    }),
   ];
 
   // ---- Schedule page ----
@@ -1113,7 +1086,7 @@ export async function downloadPolicyDocx(
   ];
 
   const logoHeader = new Header({
-    children: [logoParagraph(logoBytes, 100, 77, 80, AlignmentType.LEFT)],
+    children: [logoParagraph(logoBytes, 100, 77, 60, AlignmentType.CENTER)],
   });
 
   const footer = policyFooter(details.policyNumber);
