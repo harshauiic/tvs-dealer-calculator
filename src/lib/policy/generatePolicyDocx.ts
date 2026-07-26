@@ -42,7 +42,6 @@ const THICK = { style: BorderStyle.SINGLE, size: 12, color: "1e3a8a" };
 const BORDERS = { top: THIN, bottom: THIN, left: THIN, right: THIN };
 const BOX_BORDERS = { top: THICK, bottom: THICK, left: THICK, right: THICK };
 const NONE = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
-const NO_BORDERS = { top: NONE, bottom: NONE, left: NONE, right: NONE };
 const FOOTER_TOP = {
   top: { style: BorderStyle.SINGLE, size: 6, color: "666666" },
   bottom: NONE,
@@ -170,10 +169,10 @@ async function fetchImage(path: string): Promise<Uint8Array> {
   return new Uint8Array(await response.arrayBuffer());
 }
 
-function logoParagraph(logoBytes: Uint8Array, width = 90, height = 68) {
+function logoParagraph(logoBytes: Uint8Array, width = 90, height = 68, after = 120) {
   return new Paragraph({
     alignment: AlignmentType.CENTER,
-    spacing: { after: 120 },
+    spacing: { after },
     children: [
       new ImageRun({
         type: "png",
@@ -182,6 +181,37 @@ function logoParagraph(logoBytes: Uint8Array, width = 90, height = 68) {
       }),
     ],
   });
+}
+
+/** Full-width centered content card used on the cover page. */
+function coverCard(
+  children: Paragraph[],
+  opts?: { fill?: string; strongBorder?: boolean },
+) {
+  return new Table({
+    width: { size: PAGE_WIDTH, type: WidthType.DXA },
+    columnWidths: [PAGE_WIDTH],
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            borders: opts?.strongBorder ? BOX_BORDERS : BORDERS,
+            width: { size: PAGE_WIDTH, type: WidthType.DXA },
+            shading: { fill: opts?.fill ?? "FFFFFF" },
+            children: [
+              new Paragraph({ spacing: { before: 140 }, children: [] }),
+              ...children,
+              new Paragraph({ spacing: { after: 140 }, children: [] }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+}
+
+function spacer(after = 280) {
+  return new Paragraph({ spacing: { after }, children: [] });
 }
 
 function policyFooter(policyNumber: string) {
@@ -378,150 +408,158 @@ export async function downloadPolicyDocx(
     });
   }
 
-  // ---- Cover page (page 1) ----
-  const periodBox = new Table({
-    width: { size: 9000, type: WidthType.DXA },
-    columnWidths: [9000],
-    rows: [
-      new TableRow({
-        children: [
-          new TableCell({
-            borders: BOX_BORDERS,
-            width: { size: 9000, type: WidthType.DXA },
-            shading: { fill: "F0F5FF" },
-            children: [
-              p("PERIOD OF INSURANCE", {
-                bold: true,
-                center: true,
-                size: SIZE_SECTION,
-                before: 80,
-              }),
-              p(`From ${startText} To ${endText}`, {
-                bold: true,
-                center: true,
-                size: SIZE_ADDRESS,
-                after: 80,
-              }),
-            ],
-          }),
-        ],
-      }),
-    ],
-  });
-
+  // ---- Cover page (page 1): same content, framed cards that fill the page ----
   const coverChildren = [
-    logoParagraph(logoBytes, 110, 83),
-    p("UNITED INDIA INSURANCE COMPANY LIMITED", {
-      bold: true,
-      center: true,
-      size: SIZE_COMPANY,
-      after: 60,
-    }),
-    p("FAGUN CHAMBERS, NO. 1 & 2, II FLOOR, 26A, ETHIRAJ SALAI,", {
-      center: true,
-      size: SIZE_ADDRESS,
-    }),
-    p("EGMORE, CHENNAI 600008 TAMIL NADU", {
-      center: true,
-      size: SIZE_ADDRESS,
-    }),
-    p("PHONE: (044) 25384955", {
-      center: true,
-      size: SIZE_ADDRESS,
-      after: 160,
-    }),
-    p("SPECIAL CONTINGENCY POLICY", {
-      bold: true,
-      center: true,
-      size: SIZE_POLICY_TITLE,
-      after: 40,
-    }),
-    p(`POLICY NO.: ${details.policyNumber}`, {
-      bold: true,
-      center: true,
-      size: SIZE_SECTION,
-    }),
-    p(`UIN NO.: ${UIN}`, {
-      bold: true,
-      center: true,
-      size: SIZE_SECTION,
-      after: 160,
-    }),
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [],
-    }),
-    // Center the period box using a full-width table with empty side cells
-    new Table({
-      width: { size: PAGE_WIDTH, type: WidthType.DXA },
-      columnWidths: [1000, 9000, 1000],
-      rows: [
-        new TableRow({
-          children: [
-            new TableCell({
-              borders: NO_BORDERS,
-              width: { size: 1000, type: WidthType.DXA },
-              children: [new Paragraph({ children: [] })],
-            }),
-            new TableCell({
-              borders: NO_BORDERS,
-              width: { size: 9000, type: WidthType.DXA },
-              children: [periodBox],
-            }),
-            new TableCell({
-              borders: NO_BORDERS,
-              width: { size: 1000, type: WidthType.DXA },
-              children: [new Paragraph({ children: [] })],
-            }),
-          ],
+    logoParagraph(logoBytes, 140, 106, 280),
+    coverCard(
+      [
+        p("UNITED INDIA INSURANCE COMPANY LIMITED", {
+          bold: true,
+          center: true,
+          size: SIZE_COMPANY,
+          after: 120,
+        }),
+        p("FAGUN CHAMBERS, NO. 1 & 2, II FLOOR, 26A, ETHIRAJ SALAI,", {
+          center: true,
+          size: SIZE_ADDRESS,
+          after: 60,
+        }),
+        p("EGMORE, CHENNAI 600008 TAMIL NADU", {
+          center: true,
+          size: SIZE_ADDRESS,
+          after: 60,
+        }),
+        p("PHONE: (044) 25384955", {
+          center: true,
+          size: SIZE_ADDRESS,
+          after: 40,
         }),
       ],
-    }),
-    p(""),
-    p("Insured", {
-      bold: true,
+      { fill: "F8FAFC" },
+    ),
+    spacer(300),
+    coverCard(
+      [
+        p("SPECIAL CONTINGENCY POLICY", {
+          bold: true,
+          center: true,
+          size: SIZE_POLICY_TITLE,
+          after: 140,
+        }),
+        p(`POLICY NO.: ${details.policyNumber}`, {
+          bold: true,
+          center: true,
+          size: SIZE_SECTION,
+          after: 80,
+        }),
+        p(`UIN NO.: ${UIN}`, {
+          bold: true,
+          center: true,
+          size: SIZE_SECTION,
+          after: 40,
+        }),
+      ],
+      { fill: "EEF4FF", strongBorder: true },
+    ),
+    spacer(300),
+    coverCard(
+      [
+        p("PERIOD OF INSURANCE", {
+          bold: true,
+          center: true,
+          size: SIZE_SECTION,
+          after: 100,
+        }),
+        p(`From ${startText}`, {
+          bold: true,
+          center: true,
+          size: SIZE_ADDRESS,
+          after: 60,
+        }),
+        p(`To ${endText}`, {
+          bold: true,
+          center: true,
+          size: SIZE_ADDRESS,
+          after: 40,
+        }),
+      ],
+      { fill: "F0F5FF", strongBorder: true },
+    ),
+    spacer(300),
+    coverCard(
+      [
+        p("Insured", {
+          bold: true,
+          center: true,
+          size: SIZE_SECTION,
+          after: 100,
+        }),
+        p(input.insured_name.toUpperCase(), {
+          bold: true,
+          center: true,
+          size: SIZE_POLICY_TITLE,
+          after: 100,
+        }),
+        p(input.communication_address || "-", {
+          center: true,
+          size: SIZE_ADDRESS,
+          after: 80,
+        }),
+        ...(input.gstin_number
+          ? [
+              p(`GSTIN: ${input.gstin_number}`, {
+                center: true,
+                size: SIZE_BODY,
+                after: 40,
+              }),
+            ]
+          : []),
+      ],
+      { fill: "FFFFFF" },
+    ),
+    spacer(300),
+    coverCard(
+      [
+        p("Agent Name: HARITA INSURANCE BROKING LLP", {
+          center: true,
+          size: SIZE_BODY,
+          after: 80,
+        }),
+        p("Agent Code: BRC0000921", {
+          center: true,
+          size: SIZE_BODY,
+          after: 80,
+        }),
+        ...(details.previousPolicyNumber
+          ? [
+              p(`Previous Policy No.: ${details.previousPolicyNumber}`, {
+                center: true,
+                size: SIZE_BODY,
+                after: 40,
+              }),
+            ]
+          : []),
+      ],
+      { fill: "F8FAFC" },
+    ),
+    spacer(360),
+    p(
+      'The genuineness of the policy can be verified through "Verify Your Policy" link at www.uiic.co.in.',
+      { center: true, size: SIZE_SMALL, after: 80 },
+    ),
+    p(
+      "For any Information, Service Requests, Claim intimation and Grievances please write to 013100@uiic.co.in",
+      { center: true, size: SIZE_SMALL, after: 80 },
+    ),
+    p(
+      "Download Customer App (www.uiic.co.in). REGD. & HEAD OFFICE, 24, WHITES ROAD, CHENNAI - 600014.",
+      { center: true, size: SIZE_SMALL, after: 60 },
+    ),
+    p("Website: http://www.uiic.co.in", {
       center: true,
-      size: SIZE_SECTION,
-      before: 120,
-    }),
-    p(input.insured_name.toUpperCase(), {
-      bold: true,
-      center: true,
-      size: SIZE_POLICY_TITLE,
-      after: 60,
-    }),
-    p(input.communication_address || "-", {
-      center: true,
-      size: SIZE_ADDRESS,
+      size: SIZE_SMALL,
       after: 40,
     }),
-    ...(input.gstin_number
-      ? [
-          p(`GSTIN: ${input.gstin_number}`, {
-            center: true,
-            size: SIZE_BODY,
-            after: 120,
-          }),
-        ]
-      : [p("", { after: 80 })]),
-    p("Agent Name: HARITA INSURANCE BROKING LLP", {
-      center: true,
-      size: SIZE_BODY,
-      before: 80,
-    }),
-    p("Agent Code: BRC0000921", {
-      center: true,
-      size: SIZE_BODY,
-      after: 80,
-    }),
-    ...(details.previousPolicyNumber
-      ? [
-          p(`Previous Policy No.: ${details.previousPolicyNumber}`, {
-            center: true,
-            size: SIZE_BODY,
-          }),
-        ]
-      : []),
   ];
 
   // ---- Schedule page ----
@@ -638,12 +676,54 @@ export async function downloadPolicyDocx(
     spanSectionRow("", "Terrorism", terrorism, "continue"),
   ];
 
+  // Burglary uses the same SI basis as the proposal summary:
+  // plant + furniture + plate + neon + stocks (+ floater SI when opted).
+  // Schedule shows every sub-section (same asset lines as Fire, excluding Building).
+  const burglaryFloater = input.floater_cover.enabled
+    ? fmtNum(input.floater_cover.floater_sum_insured)
+    : COVER_NOT_OPTED;
   const burglaryRows: TableRow[] = burglaryOpted
     ? [
         sectionStartRow(
           "Section 2 – Burglary (as covered under fire section)",
-          "Sum Insured",
-          locations.map((l) => locationTotalSI(l)),
+          "Plant and machinery SI",
+          locations.map((l) => l.plant_machinery_si),
+        ),
+        sectionContinueRow(
+          "Furniture Fixtures SI",
+          locations.map((l) => l.furniture_si),
+        ),
+        sectionContinueRow(
+          "Plate glass SI",
+          locations.map((l) => l.plate_glass_si),
+        ),
+        sectionContinueRow(
+          "Neon sign SI",
+          locations.map((l) => l.neon_sign_si),
+        ),
+        sectionContinueRow(
+          "Stocks SI",
+          locations.map((l) =>
+            input.floater_cover.enabled ? "As per floater" : l.stocks_si,
+          ),
+        ),
+        sectionContinueRow(
+          "Total SI",
+          locations.map(
+            (l) =>
+              l.plant_machinery_si +
+              l.furniture_si +
+              l.plate_glass_si +
+              l.neon_sign_si +
+              (input.floater_cover.enabled ? 0 : l.stocks_si),
+          ),
+        ),
+        spanSectionRow("", "Stock Floater SI", burglaryFloater, "continue"),
+        spanSectionRow(
+          "",
+          "Burglary Sum Insured (as per summary)",
+          fmtNum(result.sections.burglary_si),
+          "continue",
         ),
       ]
     : [spanSectionRow("Section 2 – Burglary", "Sum Insured", COVER_NOT_OPTED)];
