@@ -172,9 +172,15 @@ async function fetchImage(path: string): Promise<Uint8Array> {
   return new Uint8Array(await response.arrayBuffer());
 }
 
-function logoParagraph(logoBytes: Uint8Array, width = 120, height = 63, after = 120) {
+function logoParagraph(
+  logoBytes: Uint8Array,
+  width = 100,
+  height = 77,
+  after = 120,
+  align: Align = AlignmentType.LEFT,
+) {
   return new Paragraph({
-    alignment: AlignmentType.CENTER,
+    alignment: align,
     spacing: { after },
     children: [
       new ImageRun({
@@ -186,12 +192,12 @@ function logoParagraph(logoBytes: Uint8Array, width = 120, height = 63, after = 
   });
 }
 
-/** Centered content card (used for Period of Insurance on the cover). */
+/** Period-of-insurance box; full width so it reads as centered on the cover. */
 function coverCard(
   children: Paragraph[],
   opts?: { fill?: string; strongBorder?: boolean; width?: number },
 ) {
-  const width = opts?.width ?? Math.floor(PAGE_WIDTH * 0.72);
+  const width = opts?.width ?? PAGE_WIDTH;
   return new Table({
     width: { size: width, type: WidthType.DXA },
     columnWidths: [width],
@@ -205,9 +211,17 @@ function coverCard(
             verticalAlign: VerticalAlign.CENTER,
             shading: { fill: opts?.fill ?? "FFFFFF" },
             children: [
-              new Paragraph({ spacing: { before: 160 }, children: [] }),
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 160 },
+                children: [],
+              }),
               ...children,
-              new Paragraph({ spacing: { after: 160 }, children: [] }),
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 160 },
+                children: [],
+              }),
             ],
           }),
         ],
@@ -232,6 +246,30 @@ function spacer(after = 240) {
     alignment: AlignmentType.CENTER,
     spacing: { after },
     children: [],
+  });
+}
+
+/** Wrap cover content in a full-width borderless cell so Word keeps it centered. */
+function coverFrame(children: Array<Paragraph | Table>) {
+  return new Table({
+    width: { size: PAGE_WIDTH, type: WidthType.DXA },
+    columnWidths: [PAGE_WIDTH],
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            borders: {
+              top: NONE,
+              bottom: NONE,
+              left: NONE,
+              right: NONE,
+            },
+            width: { size: PAGE_WIDTH, type: WidthType.DXA },
+            children,
+          }),
+        ],
+      }),
+    ],
   });
 }
 
@@ -334,7 +372,7 @@ export async function downloadPolicyDocx(
   const amountAlign = (v: string | number): Align =>
     typeof v === "number" || /^\d/.test(String(v))
       ? AlignmentType.RIGHT
-      : AlignmentType.CENTER;
+      : AlignmentType.LEFT;
 
   function valueCells(values: Array<string | number>) {
     return values.map((v, i) =>
@@ -356,7 +394,7 @@ export async function downloadPolicyDocx(
           bold: true,
           fill: "E8EEF7",
           verticalMerge: VerticalMergeType.RESTART,
-          align: AlignmentType.CENTER,
+          align: AlignmentType.LEFT,
           size: SIZE_SMALL,
         }),
         cell(label, fieldW),
@@ -393,7 +431,7 @@ export async function downloadPolicyDocx(
             bold: true,
             fill: "E8EEF7",
             verticalMerge: VerticalMergeType.RESTART,
-            align: AlignmentType.CENTER,
+            align: AlignmentType.LEFT,
             size: SIZE_SMALL,
           })
         : merge === "continue"
@@ -404,7 +442,7 @@ export async function downloadPolicyDocx(
           : cell(section, sectionW, {
               bold: Boolean(section),
               fill: section ? "E8EEF7" : undefined,
-              align: AlignmentType.CENTER,
+              align: AlignmentType.LEFT,
               size: SIZE_SMALL,
             });
 
@@ -414,7 +452,7 @@ export async function downloadPolicyDocx(
         cell(label, fieldW),
         cell(value, locTotalW, {
           span: locCount,
-          align: AlignmentType.CENTER,
+          align: AlignmentType.LEFT,
           bold: value === COVER_NOT_OPTED,
         }),
       ],
@@ -443,119 +481,121 @@ export async function downloadPolicyDocx(
         after: 40,
       }),
     ],
-    { fill: "F0F5FF", strongBorder: true, width: 7800 },
+    { fill: "F0F5FF", strongBorder: true, width: PAGE_WIDTH },
   );
 
   const coverChildren = [
-    spacer(120),
-    logoParagraph(logoBytes, 300, 158, 200),
-    p("UNITED INDIA INSURANCE COMPANY LIMITED", {
-      bold: true,
-      center: true,
-      size: COVER_COMPANY,
-      after: 120,
-    }),
-    p("FAGUN CHAMBERS, NO. 1 & 2, II FLOOR, 26A, ETHIRAJ SALAI,", {
-      center: true,
-      size: COVER_ADDRESS,
-      after: 40,
-    }),
-    p("EGMORE, CHENNAI 600008 TAMIL NADU", {
-      center: true,
-      size: COVER_ADDRESS,
-      after: 40,
-    }),
-    p("PHONE: (044) 25384955", {
-      center: true,
-      size: COVER_ADDRESS,
-      after: 80,
-    }),
-    coverDivider(),
-    p("SPECIAL CONTINGENCY POLICY", {
-      bold: true,
-      center: true,
-      size: COVER_TITLE,
-      after: 140,
-    }),
-    p(`POLICY NO.: ${details.policyNumber}`, {
-      bold: true,
-      center: true,
-      size: COVER_LINE,
-      after: 80,
-    }),
-    p(`UIN NO.: ${UIN}`, {
-      bold: true,
-      center: true,
-      size: COVER_LINE,
-      after: 200,
-    }),
-    periodTable,
-    spacer(280),
-    coverDivider(),
-    p("Insured", {
-      bold: true,
-      center: true,
-      size: COVER_LINE,
-      after: 100,
-    }),
-    p(input.insured_name.toUpperCase(), {
-      bold: true,
-      center: true,
-      size: COVER_TITLE,
-      after: 100,
-    }),
-    p(input.communication_address || "-", {
-      center: true,
-      size: COVER_ADDRESS,
-      after: 80,
-    }),
-    ...(input.gstin_number
-      ? [
-          p(`GSTIN: ${input.gstin_number}`, {
-            center: true,
-            size: COVER_LINE,
-            after: 160,
-          }),
-        ]
-      : [spacer(100)]),
-    spacer(160),
-    p("Agent Name: HARITA INSURANCE BROKING LLP", {
-      center: true,
-      size: COVER_LINE,
-      after: 80,
-    }),
-    p("Agent Code: BRC0000921", {
-      center: true,
-      size: COVER_LINE,
-      after: 80,
-    }),
-    ...(details.previousPolicyNumber
-      ? [
-          p(`Previous Policy No.: ${details.previousPolicyNumber}`, {
-            center: true,
-            size: COVER_LINE,
-            after: 160,
-          }),
-        ]
-      : [spacer(80)]),
-    coverDivider(),
-    p(
-      'The genuineness of the policy can be verified through "Verify Your Policy" link at www.uiic.co.in.',
-      { center: true, size: SIZE_BODY, after: 80 },
-    ),
-    p(
-      "For any Information, Service Requests, Claim intimation and Grievances please write to 013100@uiic.co.in",
-      { center: true, size: SIZE_BODY, after: 80 },
-    ),
-    p(
-      "Download Customer App (www.uiic.co.in). REGD. & HEAD OFFICE, 24, WHITES ROAD, CHENNAI - 600014.",
-      { center: true, size: SIZE_BODY, after: 60 },
-    ),
-    p("Website: http://www.uiic.co.in", {
-      center: true,
-      size: SIZE_BODY,
-      after: 40,
-    }),
+    coverFrame([
+      spacer(80),
+      logoParagraph(logoBytes, 280, 215, 180, AlignmentType.CENTER),
+      p("UNITED INDIA INSURANCE COMPANY LIMITED", {
+        bold: true,
+        center: true,
+        size: COVER_COMPANY,
+        after: 120,
+      }),
+      p("FAGUN CHAMBERS, NO. 1 & 2, II FLOOR, 26A, ETHIRAJ SALAI,", {
+        center: true,
+        size: COVER_ADDRESS,
+        after: 40,
+      }),
+      p("EGMORE, CHENNAI 600008 TAMIL NADU", {
+        center: true,
+        size: COVER_ADDRESS,
+        after: 40,
+      }),
+      p("PHONE: (044) 25384955", {
+        center: true,
+        size: COVER_ADDRESS,
+        after: 80,
+      }),
+      coverDivider(),
+      p("SPECIAL CONTINGENCY POLICY", {
+        bold: true,
+        center: true,
+        size: COVER_TITLE,
+        after: 140,
+      }),
+      p(`POLICY NO.: ${details.policyNumber}`, {
+        bold: true,
+        center: true,
+        size: COVER_LINE,
+        after: 80,
+      }),
+      p(`UIN NO.: ${UIN}`, {
+        bold: true,
+        center: true,
+        size: COVER_LINE,
+        after: 200,
+      }),
+      periodTable,
+      spacer(240),
+      coverDivider(),
+      p("Insured", {
+        bold: true,
+        center: true,
+        size: COVER_LINE,
+        after: 100,
+      }),
+      p(input.insured_name.toUpperCase(), {
+        bold: true,
+        center: true,
+        size: COVER_TITLE,
+        after: 100,
+      }),
+      p(input.communication_address || "-", {
+        center: true,
+        size: COVER_ADDRESS,
+        after: 80,
+      }),
+      ...(input.gstin_number
+        ? [
+            p(`GSTIN: ${input.gstin_number}`, {
+              center: true,
+              size: COVER_LINE,
+              after: 160,
+            }),
+          ]
+        : [spacer(100)]),
+      spacer(160),
+      p("Agent Name: HARITA INSURANCE BROKING LLP", {
+        center: true,
+        size: COVER_LINE,
+        after: 80,
+      }),
+      p("Agent Code: BRC0000921", {
+        center: true,
+        size: COVER_LINE,
+        after: 80,
+      }),
+      ...(details.previousPolicyNumber
+        ? [
+            p(`Previous Policy No.: ${details.previousPolicyNumber}`, {
+              center: true,
+              size: COVER_LINE,
+              after: 160,
+            }),
+          ]
+        : [spacer(80)]),
+      coverDivider(),
+      p(
+        'The genuineness of the policy can be verified through "Verify Your Policy" link at www.uiic.co.in.',
+        { center: true, size: SIZE_BODY, after: 80 },
+      ),
+      p(
+        "For any Information, Service Requests, Claim intimation and Grievances please write to 013100@uiic.co.in",
+        { center: true, size: SIZE_BODY, after: 80 },
+      ),
+      p(
+        "Download Customer App (www.uiic.co.in). REGD. & HEAD OFFICE, 24, WHITES ROAD, CHENNAI - 600014.",
+        { center: true, size: SIZE_BODY, after: 60 },
+      ),
+      p("Website: http://www.uiic.co.in", {
+        center: true,
+        size: SIZE_BODY,
+        after: 40,
+      }),
+    ]),
   ];
 
   // ---- Schedule page ----
@@ -589,7 +629,7 @@ export async function downloadPolicyDocx(
           cell(`From ${startText}`, 3300),
           cell("To", 2200, {
             bold: true,
-            align: AlignmentType.CENTER,
+            align: AlignmentType.LEFT,
             fill: "D6E3F0",
           }),
           cell(endText, 3300),
@@ -607,7 +647,7 @@ export async function downloadPolicyDocx(
           cell("Risk Location details", PAGE_WIDTH, {
             bold: true,
             span: 3,
-            align: AlignmentType.CENTER,
+            align: AlignmentType.LEFT,
             fill: "D6E3F0",
             size: SIZE_SECTION,
           }),
@@ -819,7 +859,7 @@ export async function downloadPolicyDocx(
         verticalAlign: VerticalAlign.CENTER,
         children: [
           new Paragraph({
-            alignment: AlignmentType.CENTER,
+            alignment: AlignmentType.LEFT,
             children: [run("Section", { bold: true, size: SIZE_SMALL, color: "FFFFFF" })],
           }),
         ],
@@ -831,7 +871,7 @@ export async function downloadPolicyDocx(
         verticalAlign: VerticalAlign.CENTER,
         children: [
           new Paragraph({
-            alignment: AlignmentType.CENTER,
+            alignment: AlignmentType.LEFT,
             children: [
               run("Particulars", { bold: true, size: SIZE_SMALL, color: "FFFFFF" }),
             ],
@@ -847,7 +887,7 @@ export async function downloadPolicyDocx(
             verticalAlign: VerticalAlign.CENTER,
             children: [
               new Paragraph({
-                alignment: AlignmentType.CENTER,
+                alignment: AlignmentType.LEFT,
                 children: [
                   run(`Location ${i + 1}`, {
                     bold: true,
@@ -887,7 +927,7 @@ export async function downloadPolicyDocx(
           cell("Deductibles / Excess", PAGE_WIDTH, {
             bold: true,
             span: 2,
-            align: AlignmentType.CENTER,
+            align: AlignmentType.LEFT,
             fill: "D6E3F0",
             size: SIZE_SECTION,
           }),
@@ -932,7 +972,7 @@ export async function downloadPolicyDocx(
           cell("Definitions", PAGE_WIDTH, {
             bold: true,
             span: 2,
-            align: AlignmentType.CENTER,
+            align: AlignmentType.LEFT,
             fill: "D6E3F0",
             size: SIZE_SECTION,
           }),
@@ -1021,13 +1061,14 @@ export async function downloadPolicyDocx(
   const premiumTable = new Table({
     width: { size: 4500, type: WidthType.DXA },
     columnWidths: [2200, 2300],
+    alignment: AlignmentType.LEFT,
     rows: [
       new TableRow({
         children: [
           cell("Premium Summary", 4500, {
             bold: true,
             span: 2,
-            align: AlignmentType.CENTER,
+            align: AlignmentType.LEFT,
             fill: "D6E3F0",
             size: SIZE_SECTION,
           }),
@@ -1072,7 +1113,7 @@ export async function downloadPolicyDocx(
   ];
 
   const logoHeader = new Header({
-    children: [logoParagraph(logoBytes, 120, 63)],
+    children: [logoParagraph(logoBytes, 100, 77, 80, AlignmentType.LEFT)],
   });
 
   const footer = policyFooter(details.policyNumber);
@@ -1121,7 +1162,6 @@ export async function downloadPolicyDocx(
         children: [
           p("SPECIAL CONTINGENCY POLICY SCHEDULE", {
             bold: true,
-            center: true,
             size: SIZE_POLICY_TITLE,
             after: 120,
             color: "1E3A8A",
