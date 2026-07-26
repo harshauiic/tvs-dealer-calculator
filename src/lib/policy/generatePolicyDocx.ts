@@ -676,7 +676,7 @@ export async function downloadPolicyDocx(
   a.href = url;
   const safePolicy = details.policyNumber.replace(/[^\w.-]+/g, "-");
   const safeName = (input.insured_name || "insured").replace(/\s+/g, "-");
-  a.download = `SPECIAL-CONTINGENCY-POLICY-${safePolicy}-${safeName}.docx`;
+  a.download = `UIIC-Policy-${safePolicy}-${safeName}.docx`;
   a.click();
   URL.revokeObjectURL(url);
 }

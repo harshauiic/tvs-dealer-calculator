@@ -92,9 +92,14 @@ export default function GeneratePolicyModal({
       <div className="bg-white rounded-lg shadow-xl w-full max-w-lg space-y-4 p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-lg font-semibold text-blue-900">Generate Policy</h3>
+            <h3 className="text-lg font-semibold text-blue-900">
+              Generate Policy
+            </h3>
             <p className="text-xs text-slate-500 mt-1">
               {referenceNumber} · {insuredName}
+            </p>
+            <p className="text-xs text-slate-400 mt-1">
+              Builds a Word schedule in-app (no reference template).
             </p>
           </div>
           <button
