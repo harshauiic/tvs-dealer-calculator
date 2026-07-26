@@ -30,10 +30,13 @@ const PAGE_WIDTH = 11000;
 const FONT = "Calibri";
 const SIZE_BODY = 18;
 const SIZE_SMALL = 16;
-const SIZE_COMPANY = 28;
-const SIZE_ADDRESS = 20;
 const SIZE_POLICY_TITLE = 24;
 const SIZE_SECTION = 20;
+/** Cover-page typography (larger than schedule pages). */
+const COVER_COMPANY = 36;
+const COVER_ADDRESS = 24;
+const COVER_TITLE = 32;
+const COVER_LINE = 26;
 const UIN = "IRDAN545RP0297V01200708";
 const COVER_NOT_OPTED = "COVER NOT OPTED";
 
@@ -236,14 +239,6 @@ function policyFooter(policyNumber: string) {
                       }),
                     ],
                   }),
-                  new Paragraph({
-                    children: [
-                      run(
-                        "The genuineness of the policy can be verified at www.uiic.co.in",
-                        { size: 14 },
-                      ),
-                    ],
-                  }),
                 ],
               }),
               new TableCell({
@@ -408,156 +403,136 @@ export async function downloadPolicyDocx(
     });
   }
 
-  // ---- Cover page (page 1): same content, framed cards that fill the page ----
+  // ---- Cover page (page 1): centered text; table only for period of insurance ----
+  const periodTable = coverCard(
+    [
+      p("PERIOD OF INSURANCE", {
+        bold: true,
+        center: true,
+        size: COVER_LINE,
+        after: 120,
+      }),
+      p(`From ${startText}`, {
+        bold: true,
+        center: true,
+        size: COVER_ADDRESS,
+        after: 80,
+      }),
+      p(`To ${endText}`, {
+        bold: true,
+        center: true,
+        size: COVER_ADDRESS,
+        after: 40,
+      }),
+    ],
+    { fill: "F0F5FF", strongBorder: true },
+  );
+
   const coverChildren = [
-    logoParagraph(logoBytes, 140, 106, 280),
-    coverCard(
-      [
-        p("UNITED INDIA INSURANCE COMPANY LIMITED", {
-          bold: true,
-          center: true,
-          size: SIZE_COMPANY,
-          after: 120,
-        }),
-        p("FAGUN CHAMBERS, NO. 1 & 2, II FLOOR, 26A, ETHIRAJ SALAI,", {
-          center: true,
-          size: SIZE_ADDRESS,
-          after: 60,
-        }),
-        p("EGMORE, CHENNAI 600008 TAMIL NADU", {
-          center: true,
-          size: SIZE_ADDRESS,
-          after: 60,
-        }),
-        p("PHONE: (044) 25384955", {
-          center: true,
-          size: SIZE_ADDRESS,
-          after: 40,
-        }),
-      ],
-      { fill: "F8FAFC" },
-    ),
-    spacer(300),
-    coverCard(
-      [
-        p("SPECIAL CONTINGENCY POLICY", {
-          bold: true,
-          center: true,
-          size: SIZE_POLICY_TITLE,
-          after: 140,
-        }),
-        p(`POLICY NO.: ${details.policyNumber}`, {
-          bold: true,
-          center: true,
-          size: SIZE_SECTION,
-          after: 80,
-        }),
-        p(`UIN NO.: ${UIN}`, {
-          bold: true,
-          center: true,
-          size: SIZE_SECTION,
-          after: 40,
-        }),
-      ],
-      { fill: "EEF4FF", strongBorder: true },
-    ),
-    spacer(300),
-    coverCard(
-      [
-        p("PERIOD OF INSURANCE", {
-          bold: true,
-          center: true,
-          size: SIZE_SECTION,
-          after: 100,
-        }),
-        p(`From ${startText}`, {
-          bold: true,
-          center: true,
-          size: SIZE_ADDRESS,
-          after: 60,
-        }),
-        p(`To ${endText}`, {
-          bold: true,
-          center: true,
-          size: SIZE_ADDRESS,
-          after: 40,
-        }),
-      ],
-      { fill: "F0F5FF", strongBorder: true },
-    ),
-    spacer(300),
-    coverCard(
-      [
-        p("Insured", {
-          bold: true,
-          center: true,
-          size: SIZE_SECTION,
-          after: 100,
-        }),
-        p(input.insured_name.toUpperCase(), {
-          bold: true,
-          center: true,
-          size: SIZE_POLICY_TITLE,
-          after: 100,
-        }),
-        p(input.communication_address || "-", {
-          center: true,
-          size: SIZE_ADDRESS,
-          after: 80,
-        }),
-        ...(input.gstin_number
-          ? [
-              p(`GSTIN: ${input.gstin_number}`, {
-                center: true,
-                size: SIZE_BODY,
-                after: 40,
-              }),
-            ]
-          : []),
-      ],
-      { fill: "FFFFFF" },
-    ),
-    spacer(300),
-    coverCard(
-      [
-        p("Agent Name: HARITA INSURANCE BROKING LLP", {
-          center: true,
-          size: SIZE_BODY,
-          after: 80,
-        }),
-        p("Agent Code: BRC0000921", {
-          center: true,
-          size: SIZE_BODY,
-          after: 80,
-        }),
-        ...(details.previousPolicyNumber
-          ? [
-              p(`Previous Policy No.: ${details.previousPolicyNumber}`, {
-                center: true,
-                size: SIZE_BODY,
-                after: 40,
-              }),
-            ]
-          : []),
-      ],
-      { fill: "F8FAFC" },
-    ),
-    spacer(360),
+    logoParagraph(logoBytes, 260, 200, 320),
+    p("UNITED INDIA INSURANCE COMPANY LIMITED", {
+      bold: true,
+      center: true,
+      size: COVER_COMPANY,
+      after: 160,
+    }),
+    p("FAGUN CHAMBERS, NO. 1 & 2, II FLOOR, 26A, ETHIRAJ SALAI,", {
+      center: true,
+      size: COVER_ADDRESS,
+      after: 80,
+    }),
+    p("EGMORE, CHENNAI 600008 TAMIL NADU", {
+      center: true,
+      size: COVER_ADDRESS,
+      after: 80,
+    }),
+    p("PHONE: (044) 25384955", {
+      center: true,
+      size: COVER_ADDRESS,
+      after: 280,
+    }),
+    p("SPECIAL CONTINGENCY POLICY", {
+      bold: true,
+      center: true,
+      size: COVER_TITLE,
+      after: 160,
+    }),
+    p(`POLICY NO.: ${details.policyNumber}`, {
+      bold: true,
+      center: true,
+      size: COVER_LINE,
+      after: 100,
+    }),
+    p(`UIN NO.: ${UIN}`, {
+      bold: true,
+      center: true,
+      size: COVER_LINE,
+      after: 280,
+    }),
+    periodTable,
+    spacer(320),
+    p("Insured", {
+      bold: true,
+      center: true,
+      size: COVER_LINE,
+      after: 120,
+    }),
+    p(input.insured_name.toUpperCase(), {
+      bold: true,
+      center: true,
+      size: COVER_TITLE,
+      after: 120,
+    }),
+    p(input.communication_address || "-", {
+      center: true,
+      size: COVER_ADDRESS,
+      after: 100,
+    }),
+    ...(input.gstin_number
+      ? [
+          p(`GSTIN: ${input.gstin_number}`, {
+            center: true,
+            size: COVER_LINE,
+            after: 200,
+          }),
+        ]
+      : [spacer(120)]),
+    spacer(200),
+    p("Agent Name: HARITA INSURANCE BROKING LLP", {
+      center: true,
+      size: COVER_LINE,
+      after: 100,
+    }),
+    p("Agent Code: BRC0000921", {
+      center: true,
+      size: COVER_LINE,
+      after: 100,
+    }),
+    ...(details.previousPolicyNumber
+      ? [
+          p(`Previous Policy No.: ${details.previousPolicyNumber}`, {
+            center: true,
+            size: COVER_LINE,
+            after: 200,
+          }),
+        ]
+      : [spacer(120)]),
+    spacer(280),
     p(
       'The genuineness of the policy can be verified through "Verify Your Policy" link at www.uiic.co.in.',
-      { center: true, size: SIZE_SMALL, after: 80 },
+      { center: true, size: SIZE_BODY, after: 100 },
     ),
     p(
       "For any Information, Service Requests, Claim intimation and Grievances please write to 013100@uiic.co.in",
-      { center: true, size: SIZE_SMALL, after: 80 },
+      { center: true, size: SIZE_BODY, after: 100 },
     ),
     p(
       "Download Customer App (www.uiic.co.in). REGD. & HEAD OFFICE, 24, WHITES ROAD, CHENNAI - 600014.",
-      { center: true, size: SIZE_SMALL, after: 60 },
+      { center: true, size: SIZE_BODY, after: 80 },
     ),
     p("Website: http://www.uiic.co.in", {
       center: true,
-      size: SIZE_SMALL,
+      size: SIZE_BODY,
       after: 40,
     }),
   ];
@@ -685,7 +660,7 @@ export async function downloadPolicyDocx(
   const burglaryRows: TableRow[] = burglaryOpted
     ? [
         sectionStartRow(
-          "Section 2 – Burglary (as covered under fire section)",
+          "Section 2 – Burglary",
           "Plant and machinery SI",
           locations.map((l) => l.plant_machinery_si),
         ),
@@ -719,12 +694,6 @@ export async function downloadPolicyDocx(
           ),
         ),
         spanSectionRow("", "Stock Floater SI", burglaryFloater, "continue"),
-        spanSectionRow(
-          "",
-          "Burglary Sum Insured (as per summary)",
-          fmtNum(result.sections.burglary_si),
-          "continue",
-        ),
       ]
     : [spanSectionRow("Section 2 – Burglary", "Sum Insured", COVER_NOT_OPTED)];
 
@@ -1024,41 +993,42 @@ export async function downloadPolicyDocx(
     p("a. All machineries and equipments are covered.", { after: 60 }),
     p(
       "All other terms and conditions as per the respective standard policies.",
-      { after: 80 },
+      { after: 120 },
     ),
-    p("Declaration", {
-      bold: true,
-      size: SIZE_SECTION,
-      after: 40,
-      color: "1E3A8A",
-    }),
-    p("I hereby declare that:"),
-    p("1. All information provided by me is true."),
-    p("2. There are nil claims in the past 3 years."),
-    p("3. We are Insuring all the assets and no selection is done.", {
-      after: 80,
-    }),
   ];
 
   const premiumTable = new Table({
     width: { size: 4500, type: WidthType.DXA },
     columnWidths: [2200, 2300],
-    rows: (
-      [
-        ["Premium:", fmtMoney(net)],
-        ["IGST (18%):", fmtMoney(gst)],
-        ["Stamp duty:", fmtMoney(stampDuty)],
-        ["Total:", fmtMoney(total)],
-      ] as const
-    ).map(
-      ([label, value]) =>
-        new TableRow({
-          children: [
-            cell(label, 2200, { bold: true, fill: "EEF2F7" }),
-            cell(value, 2300, { align: AlignmentType.RIGHT, bold: true }),
-          ],
-        }),
-    ),
+    rows: [
+      new TableRow({
+        children: [
+          cell("Premium Summary", 4500, {
+            bold: true,
+            span: 2,
+            align: AlignmentType.CENTER,
+            fill: "D6E3F0",
+            size: SIZE_SECTION,
+          }),
+        ],
+      }),
+      ...(
+        [
+          ["Premium:", fmtMoney(net)],
+          ["IGST (18%):", fmtMoney(gst)],
+          ["Stamp duty:", fmtMoney(stampDuty)],
+          ["Total:", fmtMoney(total)],
+        ] as const
+      ).map(
+        ([label, value]) =>
+          new TableRow({
+            children: [
+              cell(label, 2200, { bold: true, fill: "EEF2F7" }),
+              cell(value, 2300, { align: AlignmentType.RIGHT, bold: true }),
+            ],
+          }),
+      ),
+    ],
   });
 
   const signatureBlock = [
@@ -1081,7 +1051,7 @@ export async function downloadPolicyDocx(
   ];
 
   const logoHeader = new Header({
-    children: [logoParagraph(logoBytes, 80, 60)],
+    children: [logoParagraph(logoBytes, 110, 84)],
   });
 
   const footer = policyFooter(details.policyNumber);
@@ -1145,32 +1115,6 @@ export async function downloadPolicyDocx(
           p(""),
           definitionsTable,
           ...conditionsBlocks,
-          p("Remarks", {
-            bold: true,
-            size: SIZE_SECTION,
-            after: 40,
-            color: "1E3A8A",
-          }),
-          p(
-            "Only Air conditioners are covered under Plant and Machinery Sum Insured of Fire section, Burglary and MBD section",
-          ),
-          p("Money in transit", { bold: true, before: 60 }),
-          p("a. Transit from dealer place to Bank and vice versa"),
-          p(
-            "b. Cash carrying must be done through an authorized permanent employee of Insured.",
-          ),
-          p(
-            "c. Warranted that cash in transit above 1 lacs is carried through private transport.",
-          ),
-          p(
-            "d. Warranted that keys are not kept in the shop premises after business hours & also the cash lying outside is to be kept in safe after business hours",
-          ),
-          p("e. Transit of money should take place within 50kms limit only"),
-          p(
-            "f. Cash Carried in either in briefcase, Boxes, Bags and in any other types of carrying bags",
-          ),
-          p("g. Proper accounting system is available"),
-          p("3) Burglary – Theft and RSMD included", { after: 120 }),
           premiumTable,
           p(""),
           p(
