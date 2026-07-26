@@ -4,6 +4,7 @@ import {
   adminLogout,
   deleteProposals,
   fetchGlobalSettings,
+  fetchPincodeMap,
   fetchRateMaster,
   getSession,
   listProposals,
@@ -12,6 +13,13 @@ import {
 } from "../lib/supabase/client";
 import type { GlobalSettings, RateMasterRow } from "../lib/calculator";
 import { computeFireRate } from "../lib/calculator";
+import { downloadProposalPdf } from "../lib/pdf/proposalPdf";
+import {
+  downloadPolicyDocx,
+  type PolicyGenerationDetails,
+} from "../lib/policy/generatePolicyDocx";
+import { resolveProposalForExport } from "../lib/policy/resolveProposalForExport";
+import GeneratePolicyModal from "../components/GeneratePolicyModal";
 
 const RATE_SETTING_KEYS = [
   "burglary_rate_pct",
@@ -79,6 +87,12 @@ export default function AdminPage() {
   const [proposalSortKey, setProposalSortKey] =
     useState<ProposalSortKey>("created_at");
   const [proposalSortDir, setProposalSortDir] = useState<SortDir>("desc");
+  const [pincodeMap, setPincodeMap] = useState<Map<string, number>>(new Map());
+  const [actionBusyRef, setActionBusyRef] = useState<string | null>(null);
+  const [generateTarget, setGenerateTarget] = useState<ProposalListItem | null>(
+    null,
+  );
+  const [generatingPolicy, setGeneratingPolicy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [tab, setTab] = useState<"rates" | "settings" | "limitations" | "proposals">(
     "rates",
@@ -98,14 +112,16 @@ export default function AdminPage() {
   }, [navigate]);
 
   async function loadData() {
-    const [rateData, settingsData, proposalData] = await Promise.all([
+    const [rateData, settingsData, proposalData, pincodes] = await Promise.all([
       fetchRateMaster(),
       fetchGlobalSettings(),
       listProposals(),
+      fetchPincodeMap(),
     ]);
     setRates(rateData);
     setSettings(settingsData);
     setProposals(proposalData as ProposalListItem[]);
+    setPincodeMap(pincodes);
     setSelectedProposalIds(new Set());
   }
 
@@ -147,6 +163,51 @@ export default function AdminPage() {
       setStatus(err instanceof Error ? err.message : "Failed to delete proposals");
     } finally {
       setDeletingProposals(false);
+    }
+  };
+
+  const handleDownloadProposal = async (proposal: ProposalListItem) => {
+    if (!settings) return;
+    setActionBusyRef(proposal.reference_number);
+    setStatus(null);
+    try {
+      const { input, result, reference } = await resolveProposalForExport(
+        proposal.reference_number,
+        rates,
+        settings,
+        pincodeMap,
+      );
+      await downloadProposalPdf(input, result, reference);
+      setStatus(`Downloaded proposal ${reference}`);
+    } catch (err) {
+      setStatus(
+        err instanceof Error ? err.message : "Failed to download proposal",
+      );
+    } finally {
+      setActionBusyRef(null);
+    }
+  };
+
+  const handleGeneratePolicy = async (details: PolicyGenerationDetails) => {
+    if (!settings || !generateTarget) return;
+    setGeneratingPolicy(true);
+    setStatus(null);
+    try {
+      const { input, result } = await resolveProposalForExport(
+        generateTarget.reference_number,
+        rates,
+        settings,
+        pincodeMap,
+      );
+      await downloadPolicyDocx(input, result, details);
+      setStatus(`Generated policy for ${generateTarget.reference_number}`);
+      setGenerateTarget(null);
+    } catch (err) {
+      setStatus(
+        err instanceof Error ? err.message : "Failed to generate policy",
+      );
+    } finally {
+      setGeneratingPolicy(false);
     }
   };
 
@@ -483,7 +544,7 @@ export default function AdminPage() {
                     Date{sortIndicator("created_at")}
                   </button>
                 </th>
-                <th className="p-2"></th>
+                <th className="p-2">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -501,12 +562,31 @@ export default function AdminPage() {
                   <td className="p-2">{p.insured_name}</td>
                   <td className="p-2">{new Date(p.created_at).toLocaleString()}</td>
                   <td className="p-2">
-                    <Link
-                      to={`/load/${p.reference_number}`}
-                      className="text-blue-700 hover:underline"
-                    >
-                      Open
-                    </Link>
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <Link
+                        to={`/load/${p.reference_number}`}
+                        className="text-blue-700 hover:underline text-xs"
+                      >
+                        Open
+                      </Link>
+                      <button
+                        type="button"
+                        className="btn-secondary text-xs px-2 py-1"
+                        disabled={actionBusyRef === p.reference_number}
+                        onClick={() => handleDownloadProposal(p)}
+                      >
+                        {actionBusyRef === p.reference_number
+                          ? "Downloading..."
+                          : "Download Proposal"}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-primary text-xs px-2 py-1"
+                        onClick={() => setGenerateTarget(p)}
+                      >
+                        Generate Policy
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -522,6 +602,18 @@ export default function AdminPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {generateTarget && (
+        <GeneratePolicyModal
+          insuredName={generateTarget.insured_name}
+          referenceNumber={generateTarget.reference_number}
+          busy={generatingPolicy}
+          onCancel={() => {
+            if (!generatingPolicy) setGenerateTarget(null);
+          }}
+          onGenerate={handleGeneratePolicy}
+        />
       )}
     </div>
   );
