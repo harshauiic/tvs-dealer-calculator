@@ -5,13 +5,14 @@ import type { ProposalInput, ProposalResult } from "../calculator";
 export interface PolicyGenerationDetails {
   policyNumber: string;
   previousPolicyNumber: string;
-  startDate: string; // yyyy-mm-dd
-  startTime: string; // HH:mm
-  endDate: string; // yyyy-mm-dd
+  startDate: string;
+  startTime: string;
+  endDate: string;
 }
 
 const MAX_LOCATIONS = 6;
 const COVER_NOT_OPTED = "COVER NOT OPTED";
+const W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 
 function fmtNum(value: number): string {
   return Math.round(value).toLocaleString("en-IN");
@@ -66,11 +67,6 @@ function coverOrCount(opted: boolean, value: number): string {
   return String(Math.round(value));
 }
 
-function amountOrBlank(hasLocation: boolean, value: number): string {
-  if (!hasLocation) return "";
-  return fmtNum(value);
-}
-
 function parseAddressParts(address: string): {
   line: string;
   pincode: string;
@@ -79,7 +75,6 @@ function parseAddressParts(address: string): {
   const trimmed = address.trim();
   const pinMatch = trimmed.match(/\b(\d{6})\b/);
   const pincode = pinMatch?.[1] ?? "";
-  // Heuristic: last comma-separated token that looks like a state name
   const parts = trimmed.split(",").map((p) => p.trim()).filter(Boolean);
   const last = parts[parts.length - 1] ?? "";
   const state =
@@ -95,10 +90,9 @@ function buildTemplateData(
   input: ProposalInput,
   result: ProposalResult,
   details: PolicyGenerationDetails,
+  locationCount: number,
 ): Record<string, string> {
-  const locations = input.locations.slice(0, MAX_LOCATIONS);
-  const periodFrom = formatStartPeriod(details.startDate, details.startTime);
-  const periodTo = formatEndPeriod(details.endDate);
+  const locations = input.locations.slice(0, locationCount);
   const addr = parseAddressParts(input.communication_address || "");
 
   const net = typeof result.net_premium === "number" ? result.net_premium : 0;
@@ -127,8 +121,8 @@ function buildTemplateData(
     insured_details: input.gstin_number
       ? `${input.insured_name} / ${input.gstin_number}`
       : input.insured_name,
-    period_from: periodFrom,
-    period_to: periodTo,
+    period_from: formatStartPeriod(details.startDate, details.startTime),
+    period_to: formatEndPeriod(details.endDate),
     period_from_lower: formatStartPeriodLower(
       details.startDate,
       details.startTime,
@@ -162,84 +156,156 @@ function buildTemplateData(
     total: fmtMoney(total),
   };
 
-  for (let i = 1; i <= MAX_LOCATIONS; i++) {
+  for (let i = 1; i <= locationCount; i++) {
     const loc = locations[i - 1];
-    const has = Boolean(loc);
-    data[`loc_label_${i}`] = has ? `Location ${i}` : "";
-    data[`loc_address_${i}`] = has
-      ? `${loc.address}${loc.pincode ? ` - ${loc.pincode}` : ""}`
-      : "";
-    data[`loc_occupancy_${i}`] = has ? loc.occupancy || "" : "";
+    data[`loc_label_${i}`] = `Location ${i}`;
+    data[`loc_address_${i}`] =
+      `${loc.address}${loc.pincode ? ` - ${loc.pincode}` : ""}`;
+    data[`loc_occupancy_${i}`] = loc.occupancy || "";
 
-    data[`fire_building_${i}`] = amountOrBlank(has, loc?.building_si ?? 0);
-    data[`fire_plant_${i}`] = amountOrBlank(has, loc?.plant_machinery_si ?? 0);
-    data[`fire_furniture_${i}`] = amountOrBlank(has, loc?.furniture_si ?? 0);
-    data[`fire_plate_${i}`] = amountOrBlank(has, loc?.plate_glass_si ?? 0);
-    data[`fire_neon_${i}`] = amountOrBlank(has, loc?.neon_sign_si ?? 0);
-    data[`fire_stocks_${i}`] = has
-      ? input.floater_cover.enabled
-        ? "As per floater"
-        : fmtNum(loc.stocks_si)
-      : "";
-    data[`fire_total_${i}`] = has ? fmtNum(locationTotalSI(loc)) : "";
+    data[`fire_building_${i}`] = fmtNum(loc.building_si);
+    data[`fire_plant_${i}`] = fmtNum(loc.plant_machinery_si);
+    data[`fire_furniture_${i}`] = fmtNum(loc.furniture_si);
+    data[`fire_plate_${i}`] = fmtNum(loc.plate_glass_si);
+    data[`fire_neon_${i}`] = fmtNum(loc.neon_sign_si);
+    data[`fire_stocks_${i}`] = input.floater_cover.enabled
+      ? "As per floater"
+      : fmtNum(loc.stocks_si);
+    data[`fire_total_${i}`] = fmtNum(locationTotalSI(loc));
 
-    data[`burglary_si_${i}`] = has
-      ? burglaryOpted
-        ? fmtNum(locationTotalSI(loc))
-        : COVER_NOT_OPTED
-      : "";
-    data[`mbd_si_${i}`] = has
-      ? mbdOpted
-        ? fmtNum(loc.plant_machinery_si)
-        : COVER_NOT_OPTED
-      : "";
-    data[`plate_si_${i}`] = has
-      ? plateOpted
-        ? fmtNum(loc.plate_glass_si)
-        : COVER_NOT_OPTED
-      : "";
+    data[`burglary_si_${i}`] = burglaryOpted
+      ? fmtNum(locationTotalSI(loc))
+      : COVER_NOT_OPTED;
+    data[`mbd_si_${i}`] = mbdOpted
+      ? fmtNum(loc.plant_machinery_si)
+      : COVER_NOT_OPTED;
+    data[`plate_si_${i}`] = plateOpted
+      ? fmtNum(loc.plate_glass_si)
+      : COVER_NOT_OPTED;
 
-    const moneyOpted = has && loc.money.cover === "Opted";
+    const moneyOpted = loc.money.cover === "Opted";
     data[`money_annual_${i}`] = moneyOpted
       ? fmtNum(loc.money.annual_carrying_limit)
-      : has
-        ? "0"
-        : "";
+      : "0";
     data[`money_single_${i}`] = moneyOpted
       ? fmtNum(loc.money.single_carrying_limit)
-      : has
-        ? "0"
-        : "";
-    data[`money_safe_${i}`] = moneyOpted
-      ? fmtNum(loc.money.cash_in_safe)
-      : has
-        ? "0"
-        : "";
-    data[`money_till_${i}`] = moneyOpted
-      ? fmtNum(loc.money.cash_in_till)
-      : has
-        ? "0"
-        : "";
-  }
-
-  // When burglary/mbd/plate not opted, template has per-location cells — fill all with COVER NOT OPTED
-  if (!burglaryOpted) {
-    for (let i = 1; i <= MAX_LOCATIONS; i++) {
-      if (locations[i - 1]) data[`burglary_si_${i}`] = COVER_NOT_OPTED;
-    }
-  }
-  if (!mbdOpted) {
-    for (let i = 1; i <= MAX_LOCATIONS; i++) {
-      if (locations[i - 1]) data[`mbd_si_${i}`] = COVER_NOT_OPTED;
-    }
-  }
-  if (!plateOpted) {
-    for (let i = 1; i <= MAX_LOCATIONS; i++) {
-      if (locations[i - 1]) data[`plate_si_${i}`] = COVER_NOT_OPTED;
-    }
+      : "0";
+    data[`money_safe_${i}`] = moneyOpted ? fmtNum(loc.money.cash_in_safe) : "0";
+    data[`money_till_${i}`] = moneyOpted ? fmtNum(loc.money.cash_in_till) : "0";
   }
 
   return data;
+}
+
+function localName(node: Element): string {
+  return node.localName || node.nodeName.replace(/^.*:/, "");
+}
+
+function childrenByLocal(parent: Element, name: string): Element[] {
+  return Array.from(parent.children).filter((c) => localName(c) === name);
+}
+
+function firstByLocal(parent: Element, name: string): Element | null {
+  return childrenByLocal(parent, name)[0] ?? null;
+}
+
+function deepText(el: Element): string {
+  return (el.textContent || "").replace(/\s+/g, " ").trim();
+}
+
+function setGridSpan(tc: Element, span: number) {
+  let tcPr = firstByLocal(tc, "tcPr");
+  if (!tcPr) {
+    tcPr = tc.ownerDocument!.createElementNS(W_NS, "w:tcPr");
+    tc.insertBefore(tcPr, tc.firstChild);
+  }
+  let gridSpan = firstByLocal(tcPr, "gridSpan");
+  if (span <= 1) {
+    if (gridSpan) tcPr.removeChild(gridSpan);
+    return;
+  }
+  if (!gridSpan) {
+    gridSpan = tc.ownerDocument!.createElementNS(W_NS, "w:gridSpan");
+    tcPr.appendChild(gridSpan);
+  }
+  gridSpan.setAttributeNS(W_NS, "w:val", String(span));
+  gridSpan.setAttribute("w:val", String(span));
+}
+
+/**
+ * Adapt the fixed 6-location template to the actual location count:
+ * prune unused risk rows and SI columns, keep boxes closed.
+ */
+function adaptTemplateForLocations(xml: string, locationCount: number): string {
+  const doc = new DOMParser().parseFromString(xml, "application/xml");
+  const tables = Array.from(doc.getElementsByTagNameNS(W_NS, "tbl"));
+  if (tables.length < 3) return xml;
+
+  // Risk location table: keep title + header + N location rows
+  const riskTable = tables[1];
+  const riskRows = childrenByLocal(riskTable, "tr");
+  // rows: 0 title, 1 header, 2..7 locations
+  for (let i = riskRows.length - 1; i >= 2 + locationCount; i--) {
+    riskTable.removeChild(riskRows[i]);
+  }
+
+  // SI schedule table: keep section + field + N location columns
+  const schedule = tables[2];
+  const grid = firstByLocal(schedule, "tblGrid");
+  if (grid) {
+    const cols = childrenByLocal(grid, "gridCol");
+    // keep first 2 label cols + N location cols
+    for (let i = cols.length - 1; i >= 2 + locationCount; i--) {
+      grid.removeChild(cols[i]);
+    }
+  }
+
+  for (const row of childrenByLocal(schedule, "tr")) {
+    const cells = childrenByLocal(row, "tc");
+    if (cells.length >= 8) {
+      // normal 8-cell row: drop trailing unused location cells
+      for (let i = cells.length - 1; i >= 2 + locationCount; i--) {
+        row.removeChild(cells[i]);
+      }
+    } else if (cells.length === 3) {
+      // spanned COVER NOT OPTED style row — span across N location cols
+      setGridSpan(cells[2], locationCount);
+    }
+  }
+
+  // Strip any leftover Rs / rupee markers from headers
+  for (const t of Array.from(doc.getElementsByTagNameNS(W_NS, "t"))) {
+    if (t.textContent) {
+      t.textContent = t.textContent.replace(/\(Rs\)/gi, "").replace(/₹/g, "");
+    }
+  }
+
+  // Remove garbled concatenated premium paragraphs if any remain
+  for (const p of Array.from(doc.getElementsByTagNameNS(W_NS, "p"))) {
+    const text = deepText(p);
+    if (
+      text.includes("Premium:") &&
+      text.includes("IGST") &&
+      text.includes("Stamp") &&
+      text.length > 40
+    ) {
+      p.parentNode?.removeChild(p);
+    }
+  }
+
+  return new XMLSerializer().serializeToString(doc);
+}
+
+function normalizeDocumentFonts(xml: string): string {
+  let out = xml.replace(/w:ascii="[^"]*"/g, 'w:ascii="Calibri"');
+  out = out.replace(/w:hAnsi="[^"]*"/g, 'w:hAnsi="Calibri"');
+  out = out.replace(/w:cs="[^"]*"/g, 'w:cs="Calibri"');
+  // Normalize run font sizes only (w:sz / w:szCs), not table widths
+  out = out.replace(
+    /(<w:sz(?:Cs)?\b[^>]*\bw:val=")(?:10|11|12|14|16|19)(")/g,
+    "$118$2",
+  );
+  return out;
 }
 
 async function loadTemplateArrayBuffer(): Promise<ArrayBuffer> {
@@ -258,6 +324,10 @@ export async function downloadPolicyDocx(
   result: ProposalResult,
   details: PolicyGenerationDetails,
 ): Promise<void> {
+  const locationCount = Math.min(
+    Math.max(input.locations.length, 1),
+    MAX_LOCATIONS,
+  );
   if (input.locations.length > MAX_LOCATIONS) {
     throw new Error(
       `Policy template supports up to ${MAX_LOCATIONS} locations. This proposal has ${input.locations.length}.`,
@@ -266,13 +336,30 @@ export async function downloadPolicyDocx(
 
   const content = await loadTemplateArrayBuffer();
   const zip = new PizZip(content);
+
+  const docXmlPath = "word/document.xml";
+  let documentXml = zip.file(docXmlPath)?.asText();
+  if (!documentXml) throw new Error("Invalid policy template (missing document.xml)");
+
+  documentXml = adaptTemplateForLocations(documentXml, locationCount);
+  documentXml = normalizeDocumentFonts(documentXml);
+  // Ensure no rupee glyph sneaks into premium values
+  documentXml = documentXml.replace(/₹/g, "");
+  zip.file(docXmlPath, documentXml);
+
+  const footerPath = "word/footer1.xml";
+  const footerXml = zip.file(footerPath)?.asText();
+  if (footerXml) {
+    zip.file(footerPath, normalizeDocumentFonts(footerXml));
+  }
+
   const doc = new Docxtemplater(zip, {
     paragraphLoop: true,
     linebreaks: true,
     delimiters: { start: "{", end: "}" },
   });
 
-  doc.render(buildTemplateData(input, result, details));
+  doc.render(buildTemplateData(input, result, details, locationCount));
 
   const blob = doc.getZip().generate({
     type: "blob",
