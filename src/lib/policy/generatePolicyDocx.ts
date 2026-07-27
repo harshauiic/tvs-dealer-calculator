@@ -306,15 +306,10 @@ export async function downloadPolicyDocx(
   ]);
 
   const locations = input.locations;
-  const locCount = Math.max(locations.length, 1);
   const sectionW = 1700;
   const fieldW = 1900;
-  const locTotalW = PAGE_WIDTH - sectionW - fieldW;
-  const locW = Math.floor(locTotalW / locCount);
-  const locWidths = Array.from({ length: locCount }, (_, i) =>
-    i === locCount - 1 ? locTotalW - locW * (locCount - 1) : locW,
-  );
-  const scheduleColWidths = [sectionW, fieldW, ...locWidths];
+  /** Keep schedule columns readable; split into multiple tables when more locations. */
+  const MAX_LOCS_PER_SCHEDULE = 3;
 
   const startText = formatStartPeriod(details.startDate, details.startTime);
   const endText = formatEndPeriod(details.endDate);
@@ -334,96 +329,6 @@ export async function downloadPolicyDocx(
     ? fmtNum(input.floater_cover.floater_sum_insured)
     : COVER_NOT_OPTED;
   const terrorism = input.terrorism.opted ? "COVER OPTED" : COVER_NOT_OPTED;
-
-  const amountAlign = (v: string | number): Align =>
-    typeof v === "number" || /^\d/.test(String(v))
-      ? AlignmentType.RIGHT
-      : AlignmentType.LEFT;
-
-  function valueCells(values: Array<string | number>) {
-    return values.map((v, i) =>
-      cell(typeof v === "number" ? fmtNum(v) : v, locWidths[i], {
-        align: amountAlign(v),
-      }),
-    );
-  }
-
-  /** First row of a vertically merged section block. */
-  function sectionStartRow(
-    section: string,
-    label: string,
-    values: Array<string | number>,
-  ): TableRow {
-    return new TableRow({
-      children: [
-        cell(section, sectionW, {
-          bold: true,
-          fill: "E8EEF7",
-          verticalMerge: VerticalMergeType.RESTART,
-          align: AlignmentType.LEFT,
-          size: SIZE_SMALL,
-        }),
-        cell(label, fieldW),
-        ...valueCells(values),
-      ],
-    });
-  }
-
-  function sectionContinueRow(
-    label: string,
-    values: Array<string | number>,
-  ): TableRow {
-    return new TableRow({
-      children: [
-        cell("", sectionW, {
-          fill: "E8EEF7",
-          verticalMerge: VerticalMergeType.CONTINUE,
-        }),
-        cell(label, fieldW),
-        ...valueCells(values),
-      ],
-    });
-  }
-
-  function spanSectionRow(
-    section: string,
-    label: string,
-    value: string,
-    merge: "restart" | "continue" | "none" = "none",
-  ): TableRow {
-    const sectionCell =
-      merge === "restart"
-        ? cell(section, sectionW, {
-            bold: true,
-            fill: "E8EEF7",
-            verticalMerge: VerticalMergeType.RESTART,
-            align: AlignmentType.LEFT,
-            size: SIZE_SMALL,
-          })
-        : merge === "continue"
-          ? cell("", sectionW, {
-              fill: "E8EEF7",
-              verticalMerge: VerticalMergeType.CONTINUE,
-            })
-          : cell(section, sectionW, {
-              bold: Boolean(section),
-              fill: section ? "E8EEF7" : undefined,
-              align: AlignmentType.LEFT,
-              size: SIZE_SMALL,
-            });
-
-    return new TableRow({
-      children: [
-        sectionCell,
-        cell(label, fieldW),
-        cell(value, locTotalW, {
-          span: locCount,
-          align: AlignmentType.LEFT,
-          bold: value === COVER_NOT_OPTED,
-        }),
-      ],
-    });
-  }
 
   // ---- Cover page (page 1): layout modeled on templates/headerRef.docx ----
   // Logo is in the page header (centered) on every page — not repeated in body.
@@ -628,210 +533,315 @@ export async function downloadPolicyDocx(
     ],
   });
 
-  const fireRows: TableRow[] = [
-    sectionStartRow(
-      "Section 1 - Fire",
-      "Building SI",
-      locations.map((l) => l.building_si),
-    ),
-    sectionContinueRow(
-      "Plant and machinery SI",
-      locations.map((l) => l.plant_machinery_si),
-    ),
-    sectionContinueRow(
-      "Furniture Fixtures SI",
-      locations.map((l) => l.furniture_si),
-    ),
-    sectionContinueRow(
-      "Plate glass SI",
-      locations.map((l) => l.plate_glass_si),
-    ),
-    sectionContinueRow(
-      "Neon sign SI",
-      locations.map((l) => l.neon_sign_si),
-    ),
-    sectionContinueRow(
-      "Stocks SI",
-      locations.map((l) =>
-        input.floater_cover.enabled ? "As per floater" : l.stocks_si,
-      ),
-    ),
-    sectionContinueRow(
-      "Total SI",
-      locations.map((l) => locationTotalSI(l)),
-    ),
-    spanSectionRow("", "Fire Floater", fireFloater, "continue"),
-    spanSectionRow("", "Terrorism", terrorism, "continue"),
-  ];
 
-  // Burglary uses the same SI basis as the proposal summary:
-  // plant + furniture + plate + neon + stocks (+ floater SI when opted).
-  // Schedule shows every sub-section (same asset lines as Fire, excluding Building).
   const burglaryFloater = input.floater_cover.enabled
     ? fmtNum(input.floater_cover.floater_sum_insured)
     : COVER_NOT_OPTED;
-  const burglaryRows: TableRow[] = burglaryOpted
-    ? [
-        sectionStartRow(
-          "Section 2 – Burglary",
-          "Plant and machinery SI",
-          locations.map((l) => l.plant_machinery_si),
-        ),
-        sectionContinueRow(
-          "Furniture Fixtures SI",
-          locations.map((l) => l.furniture_si),
-        ),
-        sectionContinueRow(
-          "Plate glass SI",
-          locations.map((l) => l.plate_glass_si),
-        ),
-        sectionContinueRow(
-          "Neon sign SI",
-          locations.map((l) => l.neon_sign_si),
-        ),
-        sectionContinueRow(
-          "Stocks SI",
-          locations.map((l) =>
-            input.floater_cover.enabled ? "As per floater" : l.stocks_si,
-          ),
-        ),
-        sectionContinueRow(
-          "Total SI",
-          locations.map(
-            (l) =>
-              l.plant_machinery_si +
-              l.furniture_si +
-              l.plate_glass_si +
-              l.neon_sign_si +
-              (input.floater_cover.enabled ? 0 : l.stocks_si),
-          ),
-        ),
-        spanSectionRow("", "Stock Floater SI", burglaryFloater, "continue"),
-      ]
-    : [spanSectionRow("Section 2 – Burglary", "Sum Insured", COVER_NOT_OPTED)];
 
-  const mbdRows: TableRow[] = mbdOpted
-    ? [
-        sectionStartRow(
-          "Section 3 – MBD/EEI",
-          "Sum Insured",
-          locations.map((l) => l.plant_machinery_si),
-        ),
-      ]
-    : [spanSectionRow("Section 3 – MBD/EEI", "Sum Insured", COVER_NOT_OPTED)];
+  function buildScheduleTable(
+    slice: ProposalInput["locations"],
+    startIndex: number,
+  ): Table {
+    const sliceCount = Math.max(slice.length, 1);
+    const locTotalW = PAGE_WIDTH - sectionW - fieldW;
+    const locW = Math.floor(locTotalW / sliceCount);
+    const locWidths = Array.from({ length: sliceCount }, (_, i) =>
+      i === sliceCount - 1 ? locTotalW - locW * (sliceCount - 1) : locW,
+    );
+    const scheduleColWidths = [sectionW, fieldW, ...locWidths];
 
-  const plateRows: TableRow[] = plateOpted
-    ? [
-        sectionStartRow(
-          "Section 4 – Plate glass",
-          "Sum Insured",
-          locations.map((l) => l.plate_glass_si),
-        ),
-      ]
-    : [
-        spanSectionRow(
-          "Section 4 – Plate glass",
-          "Sum Insured",
-          COVER_NOT_OPTED,
-        ),
-      ];
+    const amountAlign = (v: string | number): Align =>
+      typeof v === "number" || /^\d/.test(String(v))
+        ? AlignmentType.RIGHT
+        : AlignmentType.LEFT;
 
-  const neonRows: TableRow[] = neonOpted
-    ? [
-        sectionStartRow(
-          "Section 5 – Neon sign",
-          "Sum Insured",
-          locations.map((l) => l.neon_sign_si),
-        ),
-      ]
-    : [spanSectionRow("Section 5 – Neon sign", "Sum Insured", COVER_NOT_OPTED)];
+    function valueCells(values: Array<string | number>) {
+      return values.map((v, i) =>
+        cell(typeof v === "number" ? fmtNum(v) : v, locWidths[i], {
+          align: amountAlign(v),
+        }),
+      );
+    }
 
-  const plRows = [
-    spanSectionRow(
-      "Section 6 – Public liability",
-      "Sum Insured",
-      coverLabel(plOpted, input.sections.public_liability_si),
-    ),
-  ];
-
-  const fidelityRows = [
-    spanSectionRow(
-      "Section 7 - Fidelity",
-      "No of permanent employees",
-      fidelityOpted
-        ? String(Math.round(input.sections.fidelity_employees))
-        : COVER_NOT_OPTED,
-      "restart",
-    ),
-    spanSectionRow(
-      "",
-      "Floater SI",
-      coverLabel(fidelityOpted, input.sections.fidelity_floater_si),
-      "continue",
-    ),
-    spanSectionRow(
-      "",
-      "Per employee limit",
-      coverLabel(fidelityOpted, input.sections.fidelity_per_employee_limit),
-      "continue",
-    ),
-  ];
-
-  const moneyRows: TableRow[] = [
-    sectionStartRow(
-      "Section 8 – Money In transit",
-      "Annual Carrying limit",
-      locations.map((l) =>
-        l.money.cover === "Opted" ? l.money.annual_carrying_limit : 0,
-      ),
-    ),
-    sectionContinueRow(
-      "Single carrying limit",
-      locations.map((l) =>
-        l.money.cover === "Opted" ? l.money.single_carrying_limit : 0,
-      ),
-    ),
-    sectionContinueRow(
-      "Cash in safe",
-      locations.map((l) => (l.money.cover === "Opted" ? l.money.cash_in_safe : 0)),
-    ),
-    sectionContinueRow(
-      "Cash in till",
-      locations.map((l) => (l.money.cover === "Opted" ? l.money.cash_in_till : 0)),
-    ),
-    spanSectionRow("", "Terrorism", terrorism, "continue"),
-  ];
-
-  const scheduleHeader = new TableRow({
-    children: [
-      new TableCell({
-        borders: BORDERS,
-        width: { size: sectionW, type: WidthType.DXA },
-        shading: { fill: "1E3A8A" },
-        verticalAlign: VerticalAlign.CENTER,
+    function sectionStartRow(
+      section: string,
+      label: string,
+      values: Array<string | number>,
+    ): TableRow {
+      return new TableRow({
         children: [
-          new Paragraph({
-            alignment: AlignmentType.LEFT,
-            children: [run("Section", { bold: true, size: SIZE_SMALL, color: "FFFFFF" })],
+          cell(section, sectionW, {
+            bold: true,
+            fill: "E8EEF7",
+            verticalMerge: VerticalMergeType.RESTART,
+            align: AlignmentType.LEFT,
+            size: SIZE_SMALL,
+          }),
+          cell(label, fieldW),
+          ...valueCells(values),
+        ],
+      });
+    }
+
+    function sectionContinueRow(
+      label: string,
+      values: Array<string | number>,
+    ): TableRow {
+      return new TableRow({
+        children: [
+          cell("", sectionW, {
+            fill: "E8EEF7",
+            verticalMerge: VerticalMergeType.CONTINUE,
+          }),
+          cell(label, fieldW),
+          ...valueCells(values),
+        ],
+      });
+    }
+
+    function spanSectionRow(
+      section: string,
+      label: string,
+      value: string,
+      merge: "restart" | "continue" | "none" = "none",
+    ): TableRow {
+      const sectionCell =
+        merge === "restart"
+          ? cell(section, sectionW, {
+              bold: true,
+              fill: "E8EEF7",
+              verticalMerge: VerticalMergeType.RESTART,
+              align: AlignmentType.LEFT,
+              size: SIZE_SMALL,
+            })
+          : merge === "continue"
+            ? cell("", sectionW, {
+                fill: "E8EEF7",
+                verticalMerge: VerticalMergeType.CONTINUE,
+              })
+            : cell(section, sectionW, {
+                bold: Boolean(section),
+                fill: section ? "E8EEF7" : undefined,
+                align: AlignmentType.LEFT,
+                size: SIZE_SMALL,
+              });
+
+      return new TableRow({
+        children: [
+          sectionCell,
+          cell(label, fieldW),
+          cell(value, locTotalW, {
+            span: sliceCount,
+            align: AlignmentType.LEFT,
+            bold: value === COVER_NOT_OPTED,
           }),
         ],
-      }),
-      new TableCell({
-        borders: BORDERS,
-        width: { size: fieldW, type: WidthType.DXA },
-        shading: { fill: "1E3A8A" },
-        verticalAlign: VerticalAlign.CENTER,
-        children: [
-          new Paragraph({
-            alignment: AlignmentType.LEFT,
-            children: [
-              run("Particulars", { bold: true, size: SIZE_SMALL, color: "FFFFFF" }),
-            ],
-          }),
-        ],
-      }),
-      ...locations.map(
-        (_, i) =>
+      });
+    }
+
+    const fireRows: TableRow[] = [
+      sectionStartRow(
+        "Section 1 - Fire",
+        "Building SI",
+        slice.map((l) => l.building_si),
+      ),
+      sectionContinueRow(
+        "Plant and machinery SI",
+        slice.map((l) => l.plant_machinery_si),
+      ),
+      sectionContinueRow(
+        "Furniture Fixtures SI",
+        slice.map((l) => l.furniture_si),
+      ),
+      sectionContinueRow(
+        "Plate glass SI",
+        slice.map((l) => l.plate_glass_si),
+      ),
+      sectionContinueRow(
+        "Neon sign SI",
+        slice.map((l) => l.neon_sign_si),
+      ),
+      sectionContinueRow(
+        "Stocks SI",
+        slice.map((l) =>
+          input.floater_cover.enabled ? "As per floater" : l.stocks_si,
+        ),
+      ),
+      sectionContinueRow(
+        "Total SI",
+        slice.map((l) => locationTotalSI(l)),
+      ),
+      spanSectionRow("", "Fire Floater", fireFloater, "continue"),
+      spanSectionRow("", "Terrorism", terrorism, "continue"),
+    ];
+
+    const burglaryRows: TableRow[] = burglaryOpted
+      ? [
+          sectionStartRow(
+            "Section 2 – Burglary",
+            "Plant and machinery SI",
+            slice.map((l) => l.plant_machinery_si),
+          ),
+          sectionContinueRow(
+            "Furniture Fixtures SI",
+            slice.map((l) => l.furniture_si),
+          ),
+          sectionContinueRow(
+            "Plate glass SI",
+            slice.map((l) => l.plate_glass_si),
+          ),
+          sectionContinueRow(
+            "Neon sign SI",
+            slice.map((l) => l.neon_sign_si),
+          ),
+          sectionContinueRow(
+            "Stocks SI",
+            slice.map((l) =>
+              input.floater_cover.enabled ? "As per floater" : l.stocks_si,
+            ),
+          ),
+          sectionContinueRow(
+            "Total SI",
+            slice.map(
+              (l) =>
+                l.plant_machinery_si +
+                l.furniture_si +
+                l.plate_glass_si +
+                l.neon_sign_si +
+                (input.floater_cover.enabled ? 0 : l.stocks_si),
+            ),
+          ),
+          spanSectionRow("", "Stock Floater SI", burglaryFloater, "continue"),
+        ]
+      : [spanSectionRow("Section 2 – Burglary", "Sum Insured", COVER_NOT_OPTED)];
+
+    const mbdRows: TableRow[] = mbdOpted
+      ? [
+          sectionStartRow(
+            "Section 3 – MBD/EEI",
+            "Sum Insured",
+            slice.map((l) => l.plant_machinery_si),
+          ),
+        ]
+      : [spanSectionRow("Section 3 – MBD/EEI", "Sum Insured", COVER_NOT_OPTED)];
+
+    const plateRows: TableRow[] = plateOpted
+      ? [
+          sectionStartRow(
+            "Section 4 – Plate glass",
+            "Sum Insured",
+            slice.map((l) => l.plate_glass_si),
+          ),
+        ]
+      : [
+          spanSectionRow(
+            "Section 4 – Plate glass",
+            "Sum Insured",
+            COVER_NOT_OPTED,
+          ),
+        ];
+
+    const neonRows: TableRow[] = neonOpted
+      ? [
+          sectionStartRow(
+            "Section 5 – Neon sign",
+            "Sum Insured",
+            slice.map((l) => l.neon_sign_si),
+          ),
+        ]
+      : [spanSectionRow("Section 5 – Neon sign", "Sum Insured", COVER_NOT_OPTED)];
+
+    const plRows = [
+      spanSectionRow(
+        "Section 6 – Public liability",
+        "Sum Insured",
+        coverLabel(plOpted, input.sections.public_liability_si),
+      ),
+    ];
+
+    const fidelityRows = [
+      spanSectionRow(
+        "Section 7 - Fidelity",
+        "No of permanent employees",
+        fidelityOpted
+          ? String(Math.round(input.sections.fidelity_employees))
+          : COVER_NOT_OPTED,
+        "restart",
+      ),
+      spanSectionRow(
+        "",
+        "Floater SI",
+        coverLabel(fidelityOpted, input.sections.fidelity_floater_si),
+        "continue",
+      ),
+      spanSectionRow(
+        "",
+        "Per employee limit",
+        coverLabel(fidelityOpted, input.sections.fidelity_per_employee_limit),
+        "continue",
+      ),
+    ];
+
+    const moneyRows: TableRow[] = [
+      sectionStartRow(
+        "Section 8 – Money In transit",
+        "Annual Carrying limit",
+        slice.map((l) =>
+          l.money.cover === "Opted" ? l.money.annual_carrying_limit : 0,
+        ),
+      ),
+      sectionContinueRow(
+        "Single carrying limit",
+        slice.map((l) =>
+          l.money.cover === "Opted" ? l.money.single_carrying_limit : 0,
+        ),
+      ),
+      sectionContinueRow(
+        "Cash in safe",
+        slice.map((l) => (l.money.cover === "Opted" ? l.money.cash_in_safe : 0)),
+      ),
+      sectionContinueRow(
+        "Cash in till",
+        slice.map((l) => (l.money.cover === "Opted" ? l.money.cash_in_till : 0)),
+      ),
+      spanSectionRow("", "Terrorism", terrorism, "continue"),
+    ];
+
+    const scheduleHeader = new TableRow({
+      children: [
+        new TableCell({
+          borders: BORDERS,
+          width: { size: sectionW, type: WidthType.DXA },
+          shading: { fill: "1E3A8A" },
+          verticalAlign: VerticalAlign.CENTER,
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.LEFT,
+              children: [
+                run("Section", { bold: true, size: SIZE_SMALL, color: "FFFFFF" }),
+              ],
+            }),
+          ],
+        }),
+        new TableCell({
+          borders: BORDERS,
+          width: { size: fieldW, type: WidthType.DXA },
+          shading: { fill: "1E3A8A" },
+          verticalAlign: VerticalAlign.CENTER,
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.LEFT,
+              children: [
+                run("Particulars", {
+                  bold: true,
+                  size: SIZE_SMALL,
+                  color: "FFFFFF",
+                }),
+              ],
+            }),
+          ],
+        }),
+        ...slice.map((_, i) =>
           new TableCell({
             borders: BORDERS,
             width: { size: locWidths[i], type: WidthType.DXA },
@@ -841,7 +851,7 @@ export async function downloadPolicyDocx(
               new Paragraph({
                 alignment: AlignmentType.LEFT,
                 children: [
-                  run(`Location ${i + 1}`, {
+                  run(`Location ${startIndex + i + 1}`, {
                     bold: true,
                     size: SIZE_SMALL,
                     color: "FFFFFF",
@@ -850,24 +860,39 @@ export async function downloadPolicyDocx(
               }),
             ],
           }),
-      ),
-    ],
-  });
+        ),
+      ],
+    });
 
-  const scheduleTableFinal = new Table({
-    width: { size: PAGE_WIDTH, type: WidthType.DXA },
-    columnWidths: scheduleColWidths,
-    rows: [
-      scheduleHeader,
-      ...fireRows,
-      ...burglaryRows,
-      ...mbdRows,
-      ...plateRows,
-      ...neonRows,
-      ...plRows,
-      ...fidelityRows,
-      ...moneyRows,
-    ],
+    return new Table({
+      width: { size: PAGE_WIDTH, type: WidthType.DXA },
+      columnWidths: scheduleColWidths,
+      rows: [
+        scheduleHeader,
+        ...fireRows,
+        ...burglaryRows,
+        ...mbdRows,
+        ...plateRows,
+        ...neonRows,
+        ...plRows,
+        ...fidelityRows,
+        ...moneyRows,
+      ],
+    });
+  }
+
+  const locationChunks: ProposalInput["locations"][] = [];
+  if (locations.length <= MAX_LOCS_PER_SCHEDULE) {
+    locationChunks.push(locations);
+  } else {
+    for (let i = 0; i < locations.length; i += MAX_LOCS_PER_SCHEDULE) {
+      locationChunks.push(locations.slice(i, i + MAX_LOCS_PER_SCHEDULE));
+    }
+  }
+
+  const scheduleBlocks = locationChunks.flatMap((chunk, chunkIndex) => {
+    const table = buildScheduleTable(chunk, chunkIndex * MAX_LOCS_PER_SCHEDULE);
+    return chunkIndex === 0 ? [table] : [p(""), table];
   });
 
   const deductiblesTable = new Table({
@@ -966,63 +991,46 @@ export async function downloadPolicyDocx(
   const conditionsBlocks = [
     p("Conditions", {
       bold: true,
-      center: true,
       size: SIZE_SECTION,
       before: 120,
       after: 60,
       color: "1E3A8A",
     }),
-    p("1) Fire section:", { bold: true, center: true }),
+    p("1) Fire section:", { bold: true }),
     p(
       "a. Sum Insured should be less than 50Crs of all Insurable assets in the risk location.",
-      { center: true },
     ),
-    p("b. Terms and conditions as per UVUS policy.", {
-      center: true,
-      after: 60,
-    }),
-    p("2) Burglary:", { bold: true, center: true }),
-    p("a. Theft and RSMD included.", { center: true }),
+    p("b. Terms and conditions as per UVUS policy.", { after: 60 }),
+    p("2) Burglary:", { bold: true }),
+    p("a. Theft and RSMD included."),
     p(
       "b. CCTV must be installed/ Watch and ward to be employed at the risk locations.",
-      { center: true, after: 60 },
+      { after: 60 },
     ),
-    p("3) Money:", { bold: true, center: true }),
-    p("a. Transit from dealer place to Bank and vice versa.", { center: true }),
+    p("3) Money:", { bold: true }),
+    p("a. Transit from dealer place to Bank and vice versa."),
     p(
       "b. Cash carrying must be done through an authorised permanent employee of Insured.",
-      { center: true },
     ),
     p(
       "c. Warranted that cash in transit above 1 lacs is carried through private transport.",
-      { center: true },
     ),
     p(
       "d. Warranted that keys are not kept in the shop premises after business hours & also the cash lying outside is to be kept in safe after business hours (Safe means heavy duty metallic lockable container).",
-      { center: true },
     ),
-    p("e. Transit of money should take place within 50kms limit only.", {
-      center: true,
-    }),
+    p("e. Transit of money should take place within 50kms limit only."),
     p(
       "f. Cash Carried in either in briefcase, Boxes, Bags and in any other types of carrying bags.",
-      { center: true },
     ),
-    p("g. Proper accounting system is available.", {
-      center: true,
-      after: 60,
-    }),
-    p("4) Fidelity:", { bold: true, center: true }),
-    p("a. Only permanent employees are covered.", { center: true }),
+    p("g. Proper accounting system is available.", { after: 60 }),
+    p("4) Fidelity:", { bold: true }),
+    p("a. Only permanent employees are covered."),
     p(
       "b. Loss of property entrusted to any person other than the designated employee of the Insured is not covered.",
-      { center: true, after: 60 },
+      { after: 60 },
     ),
-    p("5) MBD and EEI:", { bold: true, center: true }),
-    p("a. All machineries and equipments are covered.", {
-      center: true,
-      after: 120,
-    }),
+    p("5) MBD and EEI:", { bold: true }),
+    p("a. All machineries and equipments are covered.", { after: 120 }),
   ];
 
   const premiumTable = new Table({
@@ -1139,7 +1147,7 @@ export async function downloadPolicyDocx(
           p(""),
           riskTable,
           p(""),
-          scheduleTableFinal,
+          ...scheduleBlocks,
           p(""),
           deductiblesTable,
           p(""),
