@@ -45,6 +45,7 @@ const THICK = { style: BorderStyle.SINGLE, size: 12, color: "1e3a8a" };
 const BORDERS = { top: THIN, bottom: THIN, left: THIN, right: THIN };
 const BOX_BORDERS = { top: THICK, bottom: THICK, left: THICK, right: THICK };
 const NONE = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
+const NO_BORDERS = { top: NONE, bottom: NONE, left: NONE, right: NONE };
 const FOOTER_TOP = {
   top: { style: BorderStyle.SINGLE, size: 6, color: "666666" },
   bottom: NONE,
@@ -238,6 +239,63 @@ function spacer(after = 120) {
   });
 }
 
+/** Centered label/value rows for cover (Agent Name / Agent Code alignment). */
+function coverKeyValueTable(rows: Array<[string, string]>) {
+  const labelW = 3200;
+  const valueW = 5600;
+  const inner = labelW + valueW;
+  const side = Math.floor((PAGE_WIDTH - inner) / 2);
+  const right = PAGE_WIDTH - side - inner;
+
+  return new Table({
+    width: { size: PAGE_WIDTH, type: WidthType.DXA },
+    columnWidths: [side, labelW, valueW, right],
+    rows: rows.map(
+      ([label, value]) =>
+        new TableRow({
+          children: [
+            new TableCell({
+              borders: NO_BORDERS,
+              width: { size: side, type: WidthType.DXA },
+              children: [new Paragraph({ children: [] })],
+            }),
+            new TableCell({
+              borders: NO_BORDERS,
+              width: { size: labelW, type: WidthType.DXA },
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.RIGHT,
+                  spacing: { after: 80 },
+                  children: [
+                    run(`${label}`, { bold: true, size: COVER_LINE }),
+                  ],
+                }),
+              ],
+            }),
+            new TableCell({
+              borders: NO_BORDERS,
+              width: { size: valueW, type: WidthType.DXA },
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.LEFT,
+                  spacing: { after: 80 },
+                  children: [
+                    run(`:  ${value}`, { size: COVER_LINE }),
+                  ],
+                }),
+              ],
+            }),
+            new TableCell({
+              borders: NO_BORDERS,
+              width: { size: right, type: WidthType.DXA },
+              children: [new Paragraph({ children: [] })],
+            }),
+          ],
+        }),
+    ),
+  });
+}
+
 function policyFooter(policyNumber: string) {
   return new Footer({
     children: [
@@ -415,27 +473,17 @@ export async function downloadPolicyDocx(
           }),
         ]
       : [spacer(60)]),
-    spacer(80),
-    p(`Agent Name\t: HARITA INSURANCE BROKING LLP`, {
-      center: true,
-      size: COVER_LINE,
-      after: 40,
-    }),
-    p(`Agent Code\t: BRC0000921`, {
-      center: true,
-      size: COVER_LINE,
-      after: 40,
-    }),
-    ...(details.previousPolicyNumber
-      ? [
-          p(`Previous Policy No.\t: ${details.previousPolicyNumber}`, {
-            center: true,
-            size: COVER_LINE,
-            after: 100,
-          }),
-        ]
-      : [spacer(80)]),
-    spacer(120),
+    spacer(100),
+    coverKeyValueTable([
+      ["Agent Name", "HARITA INSURANCE BROKING LLP"],
+      ["Agent Code", "BRC0000921"],
+      ...(details.previousPolicyNumber
+        ? ([["Previous Policy No.", details.previousPolicyNumber]] as Array<
+            [string, string]
+          >)
+        : []),
+    ]),
+    spacer(900),
     p(
       'The genuineness of the policy can be verified through "Verify Your Policy" link at www.uiic.co.in.',
       { center: true, size: SIZE_SMALL, after: 50 },
