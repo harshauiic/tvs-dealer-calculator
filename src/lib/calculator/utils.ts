@@ -54,8 +54,12 @@ export function computeFireRate(
   totalSI: number,
   withTerrorism: boolean,
   settings: GlobalSettings,
+  thresholdMode: "strict" | "inclusive" = "strict",
 ): number {
-  const underThreshold = totalSI < settings.si_threshold;
+  const underThreshold =
+    thresholdMode === "inclusive"
+      ? totalSI <= settings.si_threshold
+      : totalSI < settings.si_threshold;
 
   if (underThreshold) {
     const base =

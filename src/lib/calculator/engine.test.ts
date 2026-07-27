@@ -200,4 +200,27 @@ describe("calcProposal", () => {
       2,
     );
   });
+
+  it("bands floater fire rates by Maximum stock SI per location (<=5Cr vs >5Cr)", () => {
+    const input = buildAditiInput();
+    const pincodeMap = new Map(
+      aditiFixture.locations.map((l) => [l.pincode, Number(l.eq_zone)]),
+    );
+    input.locations = input.locations.map((loc) => ({ ...loc, stocks_si: 0 }));
+    input.floater_cover = {
+      enabled: true,
+      floater_sum_insured: 100_000_000,
+      max_sum_insured_per_location: settings.si_threshold,
+    };
+
+    const atThreshold = calcProposal(input, rateMaster, pincodeMap, settings);
+    expect(atThreshold.errors).toEqual([]);
+    expect(atThreshold.fire_floater_rate).not.toBeNull();
+
+    input.floater_cover.max_sum_insured_per_location = settings.si_threshold + 1;
+    const overThreshold = calcProposal(input, rateMaster, pincodeMap, settings);
+    expect(overThreshold.errors).toEqual([]);
+    expect(overThreshold.fire_floater_rate).not.toBeNull();
+    expect(overThreshold.fire_floater_rate).not.toBe(atThreshold.fire_floater_rate);
+  });
 });

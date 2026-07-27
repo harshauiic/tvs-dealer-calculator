@@ -40,8 +40,8 @@ function locationNonStockSI(loc: LocationInput): number {
 }
 
 /** SI used for under/over 5Cr rate banding when floater cover is opted. */
-function locationFloaterBandSI(loc: LocationInput, maxPerLocation: number): number {
-  return maxPerLocation + locationNonStockSI(loc);
+function locationFloaterBandSI(maxPerLocation: number): number {
+  return maxPerLocation;
 }
 
 function isLocationStarted(loc: LocationInput): boolean {
@@ -358,16 +358,24 @@ function calcLocationFirePremium(
   }
 
   const nonStockSI = locationNonStockSI(loc);
-  const siForRate = stockFloater
-    ? locationFloaterBandSI(loc, maxPerLocation)
-    : locationTotalSI(loc);
-  const locationRate = computeFireRate(row, siForRate, withTerrorism, settings);
+  const locationRate = stockFloater
+    ? computeFireRate(
+        row,
+        locationFloaterBandSI(maxPerLocation),
+        withTerrorism,
+        settings,
+        "inclusive",
+      )
+    : computeFireRate(row, locationTotalSI(loc), withTerrorism, settings);
 
   if (stockFloater) {
     return { premium: (nonStockSI * locationRate) / 1000, rate: locationRate };
   }
 
-  return { premium: (siForRate * locationRate) / 1000, rate: locationRate };
+  return {
+    premium: (locationTotalSI(loc) * locationRate) / 1000,
+    rate: locationRate,
+  };
 }
 
 function calcLocationMoneyPremium(

@@ -395,6 +395,7 @@ export default function CalculatorPage({ initialInput, initialReference }: Props
             index={index}
             eqZone={lookupEqZone(loc.pincode, pincodeMap)}
             floaterCoverEnabled={input.floater_cover.enabled}
+            previousLocation={index > 0 ? input.locations[index - 1] : null}
             collapsible={collapsible}
             collapsed={collapsible && collapsedLocations.has(loc.id)}
             onToggleCollapse={() => toggleLocationCollapse(loc.id)}

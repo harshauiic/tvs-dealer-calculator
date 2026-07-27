@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { LocationInput } from "../lib/calculator";
 import { OCCUPANCY_TYPES } from "../lib/calculator";
 import AmountInput from "./AmountInput";
@@ -7,6 +8,7 @@ interface Props {
   index: number;
   eqZone: number | null;
   floaterCoverEnabled: boolean;
+  previousLocation?: LocationInput | null;
   collapsible: boolean;
   collapsed: boolean;
   onToggleCollapse: () => void;
@@ -24,11 +26,38 @@ const SI_FIELDS = [
   ["stocks_si", "Stocks SI"],
 ] as const;
 
+function hasExpiringPolicyDetails(loc: LocationInput | null | undefined): boolean {
+  if (!loc || loc.no_expiring_policy) return false;
+  return (
+    Boolean(loc.insurance_company.trim()) &&
+    Boolean(loc.period_start) &&
+    Boolean(loc.period_end)
+  );
+}
+
+function copyExpiringFromPrevious(
+  location: LocationInput,
+  previous: LocationInput,
+): LocationInput {
+  return {
+    ...location,
+    no_expiring_policy: false,
+    insurance_company: previous.insurance_company,
+    period_start: previous.period_start,
+    period_end: previous.period_end,
+    period_of_cover:
+      previous.period_start && previous.period_end
+        ? `${previous.period_start} to ${previous.period_end}`
+        : previous.period_of_cover,
+  };
+}
+
 export default function LocationForm({
   location,
   index,
   eqZone,
   floaterCoverEnabled,
+  previousLocation = null,
   collapsible,
   collapsed,
   onToggleCollapse,
@@ -47,6 +76,37 @@ export default function LocationForm({
     onChange({ ...location, money: { ...location.money, [key]: value } });
   };
 
+  const canCopyFromPrevious =
+    index > 0 && hasExpiringPolicyDetails(previousLocation);
+  const [copyFromPrevious, setCopyFromPrevious] = useState(false);
+
+  useEffect(() => {
+    if (!canCopyFromPrevious && copyFromPrevious) {
+      setCopyFromPrevious(false);
+    }
+  }, [canCopyFromPrevious, copyFromPrevious]);
+
+  useEffect(() => {
+    if (!copyFromPrevious || !previousLocation) return;
+    const synced = copyExpiringFromPrevious(location, previousLocation);
+    if (
+      synced.insurance_company !== location.insurance_company ||
+      synced.period_start !== location.period_start ||
+      synced.period_end !== location.period_end ||
+      synced.no_expiring_policy !== location.no_expiring_policy
+    ) {
+      onChange(synced);
+    }
+    // Sync only when previous expiring details or the copy toggle change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
+  }, [
+    copyFromPrevious,
+    previousLocation?.insurance_company,
+    previousLocation?.period_start,
+    previousLocation?.period_end,
+    previousLocation?.no_expiring_policy,
+  ]);
+
   const num = (key: keyof LocationInput) => Number(location[key] || 0);
 
   const totalSI =
@@ -58,6 +118,7 @@ export default function LocationForm({
     num("stocks_si");
 
   const moneyOpted = location.money.cover === "Opted";
+  const expiringFieldsLocked = location.no_expiring_policy || copyFromPrevious;
 
   return (
     <div className="card space-y-6">
@@ -141,28 +202,47 @@ export default function LocationForm({
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h4 className="subsection-title mb-0">Expiring policy details</h4>
-          <label className="choice-control text-sm">
-            <input
-              type="checkbox"
-              checked={location.no_expiring_policy}
-              onChange={(e) => {
-                const no_expiring_policy = e.target.checked;
-                onChange({
-                  ...location,
-                  no_expiring_policy,
-                  ...(no_expiring_policy
-                    ? {
-                        insurance_company: "",
-                        period_start: "",
-                        period_end: "",
-                        period_of_cover: "",
-                      }
-                    : {}),
-                });
-              }}
-            />
-            <span>There is no expiring policy for this location</span>
-          </label>
+          <div className="flex flex-wrap items-center gap-4">
+            {canCopyFromPrevious && (
+              <label className="choice-control text-sm">
+                <input
+                  type="checkbox"
+                  checked={copyFromPrevious}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setCopyFromPrevious(checked);
+                    if (checked && previousLocation) {
+                      onChange(copyExpiringFromPrevious(location, previousLocation));
+                    }
+                  }}
+                />
+                <span>Copy from previous location</span>
+              </label>
+            )}
+            <label className="choice-control text-sm">
+              <input
+                type="checkbox"
+                checked={location.no_expiring_policy}
+                disabled={copyFromPrevious}
+                onChange={(e) => {
+                  const no_expiring_policy = e.target.checked;
+                  onChange({
+                    ...location,
+                    no_expiring_policy,
+                    ...(no_expiring_policy
+                      ? {
+                          insurance_company: "",
+                          period_start: "",
+                          period_end: "",
+                          period_of_cover: "",
+                        }
+                      : {}),
+                  });
+                }}
+              />
+              <span>There is no expiring policy for this location</span>
+            </label>
+          </div>
         </div>
         <div className="space-y-4 max-w-xl">
           <div>
@@ -174,7 +254,7 @@ export default function LocationForm({
             </label>
             <input
               value={location.insurance_company}
-              disabled={location.no_expiring_policy}
+              disabled={expiringFieldsLocked}
               onChange={(e) => update("insurance_company", e.target.value)}
             />
           </div>
@@ -196,7 +276,7 @@ export default function LocationForm({
                 <input
                   type="date"
                   value={location.period_start}
-                  disabled={location.no_expiring_policy}
+                  disabled={expiringFieldsLocked}
                   onChange={(e) => {
                     const period_start = e.target.value;
                     onChange({
@@ -220,7 +300,7 @@ export default function LocationForm({
                 <input
                   type="date"
                   value={location.period_end}
-                  disabled={location.no_expiring_policy}
+                  disabled={expiringFieldsLocked}
                   onChange={(e) => {
                     const period_end = e.target.value;
                     onChange({
