@@ -631,11 +631,11 @@ export function calcProposal(
     ? (allPremiums.find(
         (p) => typeof p === "string" && p !== "Cover Not Opted",
       ) ?? "Invalid input")
-    : sumPremiums(allPremiums);
+    : Math.round(sumPremiums(allPremiums));
 
   const gst =
     typeof netPremium === "number"
-      ? netPremium * (settings.gst_rate_pct / 100)
+      ? Math.round(netPremium * (settings.gst_rate_pct / 100))
       : netPremium;
 
   const totalPremium =

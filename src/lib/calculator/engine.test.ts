@@ -98,11 +98,12 @@ describe("calcProposal", () => {
 
     const result = calcProposal(input, rateMaster, pincodeMap, settings);
 
-    expect(result.net_premium).toBeCloseTo(aditiFixture.expected.net_premium, 1);
-    expect(result.gst).toBeCloseTo(aditiFixture.expected.gst, 1);
-    expect(result.total_premium).toBeCloseTo(
-      aditiFixture.expected.total_premium,
-      1,
+    expect(result.net_premium).toBe(Math.round(aditiFixture.expected.net_premium));
+    expect(result.gst).toBe(
+      Math.round(Math.round(aditiFixture.expected.net_premium) * (settings.gst_rate_pct / 100)),
+    );
+    expect(result.total_premium).toBe(
+      (result.net_premium as number) + (result.gst as number),
     );
     expect(result.sections.burglary_premium).toBeCloseTo(
       aditiFixture.expected.burglary_premium,

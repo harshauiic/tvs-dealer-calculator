@@ -353,6 +353,81 @@ function policyFooter(policyNumber: string) {
   });
 }
 
+/** Cover footer: genuineness/contact notes sit just above Policy No / page numbers. */
+function coverFooter(policyNumber: string) {
+  return new Footer({
+    children: [
+      p(
+        'The genuineness of the policy can be verified through "Verify Your Policy" link at www.uiic.co.in.',
+        { center: true, size: SIZE_SMALL, after: 40 },
+      ),
+      p(
+        "For any Information, Service Requests, Claim intimation and Grievances please write to 013100@uiic.co.in",
+        { center: true, size: SIZE_SMALL, after: 40 },
+      ),
+      p(
+        "Download Customer App (www.uiic.co.in). REGD. & HEAD OFFICE, 24, WHITES ROAD, CHENNAI - 600014.",
+        { center: true, size: SIZE_SMALL, after: 30 },
+      ),
+      p("Website: http://www.uiic.co.in", {
+        center: true,
+        size: SIZE_SMALL,
+        after: 80,
+      }),
+      new Table({
+        width: { size: PAGE_WIDTH, type: WidthType.DXA },
+        columnWidths: [5500, 5500],
+        rows: [
+          new TableRow({
+            children: [
+              new TableCell({
+                borders: FOOTER_TOP,
+                width: { size: 5500, type: WidthType.DXA },
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.LEFT,
+                    spacing: { before: 60 },
+                    children: [
+                      run(`Policy No.: ${policyNumber}`, {
+                        bold: true,
+                        size: SIZE_SMALL,
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+              new TableCell({
+                borders: FOOTER_TOP,
+                width: { size: 5500, type: WidthType.DXA },
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.RIGHT,
+                    spacing: { before: 60 },
+                    children: [
+                      run("Page ", { size: SIZE_SMALL }),
+                      new TextRun({
+                        children: [PageNumber.CURRENT],
+                        font: FONT,
+                        size: SIZE_SMALL,
+                      }),
+                      run(" of ", { size: SIZE_SMALL }),
+                      new TextRun({
+                        children: [PageNumber.TOTAL_PAGES],
+                        font: FONT,
+                        size: SIZE_SMALL,
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+}
+
 export async function downloadPolicyDocx(
   input: ProposalInput,
   result: ProposalResult,
@@ -436,15 +511,18 @@ export async function downloadPolicyDocx(
       size: COVER_TITLE,
       after: 60,
     }),
-    p(
-      `POLICY NO.: ${details.policyNumber}    UIN NO.: ${UIN}`,
-      {
-        bold: true,
-        center: true,
-        size: COVER_LINE,
-        after: 140,
-      },
-    ),
+    p(`POLICY NO.: ${details.policyNumber}`, {
+      bold: true,
+      center: true,
+      size: COVER_LINE,
+      after: 40,
+    }),
+    p(`UIN NO.: ${UIN}`, {
+      bold: true,
+      center: true,
+      size: COVER_LINE,
+      after: 140,
+    }),
     periodTable,
     spacer(160),
     p("Insured", {
@@ -462,17 +540,8 @@ export async function downloadPolicyDocx(
     p(input.communication_address || "-", {
       center: true,
       size: COVER_ADDRESS,
-      after: 40,
+      after: 80,
     }),
-    ...(input.gstin_number
-      ? [
-          p(`GSTIN: ${input.gstin_number}`, {
-            center: true,
-            size: COVER_LINE,
-            after: 80,
-          }),
-        ]
-      : [spacer(60)]),
     spacer(100),
     coverKeyValueTable([
       ["Agent Name", "HARITA INSURANCE BROKING LLP"],
@@ -483,24 +552,6 @@ export async function downloadPolicyDocx(
           >)
         : []),
     ]),
-    spacer(900),
-    p(
-      'The genuineness of the policy can be verified through "Verify Your Policy" link at www.uiic.co.in.',
-      { center: true, size: SIZE_SMALL, after: 50 },
-    ),
-    p(
-      "For any Information, Service Requests, Claim intimation and Grievances please write to 013100@uiic.co.in",
-      { center: true, size: SIZE_SMALL, after: 50 },
-    ),
-    p(
-      "Download Customer App (www.uiic.co.in). REGD. & HEAD OFFICE, 24, WHITES ROAD, CHENNAI - 600014.",
-      { center: true, size: SIZE_SMALL, after: 40 },
-    ),
-    p("Website: http://www.uiic.co.in", {
-      center: true,
-      size: SIZE_SMALL,
-      after: 0,
-    }),
   ];
 
   // ---- Schedule page ----
@@ -518,14 +569,14 @@ export async function downloadPolicyDocx(
       }),
       new TableRow({
         children: [
-          cell("Insured Details", 2200, { bold: true, fill: "D6E3F0" }),
-          cell(
-            input.gstin_number
-              ? `${input.insured_name} / ${input.gstin_number}`
-              : input.insured_name,
-            8800,
-            { span: 3 },
-          ),
+          cell("Insured name", 2200, { bold: true, fill: "D6E3F0" }),
+          cell(input.insured_name || " ", 8800, { span: 3 }),
+        ],
+      }),
+      new TableRow({
+        children: [
+          cell("GSTIN of Insured", 2200, { bold: true, fill: "D6E3F0" }),
+          cell(input.gstin_number || " ", 8800, { span: 3 }),
         ],
       }),
       new TableRow({
@@ -552,7 +603,7 @@ export async function downloadPolicyDocx(
           cell("Risk Location details", PAGE_WIDTH, {
             bold: true,
             span: 3,
-            align: AlignmentType.LEFT,
+            align: AlignmentType.CENTER,
             fill: "D6E3F0",
             size: SIZE_SECTION,
           }),
@@ -561,8 +612,16 @@ export async function downloadPolicyDocx(
       new TableRow({
         children: [
           cell(" ", 2200, { fill: "EEF2F7" }),
-          cell("Risk location address", 5200, { bold: true, fill: "EEF2F7" }),
-          cell("Occupancy", 3600, { bold: true, fill: "EEF2F7" }),
+          cell("Risk location address", 5200, {
+            bold: true,
+            fill: "EEF2F7",
+            align: AlignmentType.CENTER,
+          }),
+          cell("Occupancy", 3600, {
+            bold: true,
+            fill: "EEF2F7",
+            align: AlignmentType.CENTER,
+          }),
         ],
       }),
       ...locations.map(
@@ -864,7 +923,7 @@ export async function downloadPolicyDocx(
           verticalAlign: VerticalAlign.CENTER,
           children: [
             new Paragraph({
-              alignment: AlignmentType.LEFT,
+              alignment: AlignmentType.CENTER,
               children: [
                 run("Section", { bold: true, size: SIZE_SMALL, color: "FFFFFF" }),
               ],
@@ -878,7 +937,7 @@ export async function downloadPolicyDocx(
           verticalAlign: VerticalAlign.CENTER,
           children: [
             new Paragraph({
-              alignment: AlignmentType.LEFT,
+              alignment: AlignmentType.CENTER,
               children: [
                 run("Particulars", {
                   bold: true,
@@ -897,7 +956,7 @@ export async function downloadPolicyDocx(
             verticalAlign: VerticalAlign.CENTER,
             children: [
               new Paragraph({
-                alignment: AlignmentType.LEFT,
+                alignment: AlignmentType.CENTER,
                 children: [
                   run(`Location ${startIndex + i + 1}`, {
                     bold: true,
@@ -952,7 +1011,7 @@ export async function downloadPolicyDocx(
           cell("Deductibles / Excess", PAGE_WIDTH, {
             bold: true,
             span: 2,
-            align: AlignmentType.LEFT,
+            align: AlignmentType.CENTER,
             fill: "D6E3F0",
             size: SIZE_SECTION,
           }),
@@ -997,7 +1056,7 @@ export async function downloadPolicyDocx(
           cell("Definitions", PAGE_WIDTH, {
             bold: true,
             span: 2,
-            align: AlignmentType.LEFT,
+            align: AlignmentType.CENTER,
             fill: "D6E3F0",
             size: SIZE_SECTION,
           }),
@@ -1047,8 +1106,8 @@ export async function downloadPolicyDocx(
     p("1) Fire section:", { bold: true }),
     p(
       "a. Sum Insured should be less than 50Crs of all Insurable assets in the risk location.",
+      { after: 60 },
     ),
-    p("b. Terms and conditions as per UVUS policy.", { after: 60 }),
     p("2) Burglary:", { bold: true }),
     p("a. Theft and RSMD included."),
     p(
@@ -1091,7 +1150,7 @@ export async function downloadPolicyDocx(
           cell("Premium Summary", 4500, {
             bold: true,
             span: 2,
-            align: AlignmentType.LEFT,
+            align: AlignmentType.CENTER,
             fill: "D6E3F0",
             size: SIZE_SECTION,
           }),
@@ -1100,7 +1159,7 @@ export async function downloadPolicyDocx(
       ...(
         [
           ["Premium:", fmtMoney(net)],
-          ["IGST (18%):", fmtMoney(gst)],
+          ["GST (18%):", fmtMoney(gst)],
           ["Stamp duty:", fmtMoney(stampDuty)],
           ["Total:", fmtMoney(total)],
         ] as const
@@ -1140,6 +1199,7 @@ export async function downloadPolicyDocx(
   });
 
   const footer = policyFooter(details.policyNumber);
+  const firstPageFooter = coverFooter(details.policyNumber);
 
   const doc = new Document({
     styles: {
@@ -1157,15 +1217,15 @@ export async function downloadPolicyDocx(
             margin: {
               top: 900,
               right: 500,
-              bottom: 700,
+              bottom: 1400,
               left: 500,
               header: 300,
-              footer: 400,
+              footer: 600,
             },
           },
         },
         headers: { default: logoHeader },
-        footers: { default: footer },
+        footers: { default: firstPageFooter },
         children: coverChildren,
       },
       {
@@ -1187,6 +1247,7 @@ export async function downloadPolicyDocx(
         children: [
           p("SPECIAL CONTINGENCY POLICY SCHEDULE", {
             bold: true,
+            center: true,
             size: SIZE_POLICY_TITLE,
             after: 120,
             color: "1E3A8A",
