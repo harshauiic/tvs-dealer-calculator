@@ -10,7 +10,13 @@ import type {
 
 export function resolveFireCover(terrorism: TerrorismCover): FireCoverOption {
   if (!terrorism.opted) return "Cover Opted without Terrorism";
-  return "Cover Opted with Terrorism";
+  if (
+    terrorism.scope === "Only fire cover" ||
+    terrorism.scope === "Both fire and money in transit"
+  ) {
+    return "Cover Opted with Terrorism";
+  }
+  return "Cover Opted without Terrorism";
 }
 
 export function resolveMoneyCover(

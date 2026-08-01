@@ -7,7 +7,12 @@ import {
   Image,
   pdf,
 } from "@react-pdf/renderer";
-import type { ProposalInput, ProposalResult } from "../calculator";
+import {
+  resolveFireCover,
+  resolveMoneyCover,
+  type ProposalInput,
+  type ProposalResult,
+} from "../calculator";
 
 const styles = StyleSheet.create({
   page: {
@@ -583,6 +588,12 @@ function ProposalDocument({
                   "Total Fire SI",
                   formatAmount(result.locations[i]?.total_si ?? 0),
                 ],
+                [
+                  "Terrorism",
+                  resolveFireCover(input.terrorism) === "Cover Opted with Terrorism"
+                    ? "COVER OPTED"
+                    : "COVER NOT OPTED",
+                ],
               ] as const
             ).map(([label, si]) => (
               <View key={label} style={styles.tableRow}>
@@ -631,6 +642,15 @@ function ProposalDocument({
             <View style={styles.row}>
               <Text style={styles.label}>Cash in till</Text>
               <Text style={styles.value}>{formatAmount(loc.money.cash_in_till)}</Text>
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.label}>Terrorism</Text>
+              <Text style={styles.value}>
+                {resolveMoneyCover(loc.money.cover, input.terrorism) ===
+                "Cover Opted with Terrorism"
+                  ? "COVER OPTED"
+                  : "COVER NOT OPTED"}
+              </Text>
             </View>
           </View>
         ))}

@@ -16,7 +16,12 @@ import {
   VerticalMergeType,
   WidthType,
 } from "docx";
-import type { ProposalInput, ProposalResult } from "../calculator";
+import {
+  resolveFireCover,
+  resolveMoneyCover,
+  type ProposalInput,
+  type ProposalResult,
+} from "../calculator";
 
 export interface PolicyGenerationDetails {
   policyNumber: string;
@@ -461,7 +466,14 @@ export async function downloadPolicyDocx(
   const fireFloater = input.floater_cover.enabled
     ? fmtNum(input.floater_cover.floater_sum_insured)
     : COVER_NOT_OPTED;
-  const terrorism = input.terrorism.opted ? "COVER OPTED" : COVER_NOT_OPTED;
+  const fireTerrorism =
+    resolveFireCover(input.terrorism) === "Cover Opted with Terrorism"
+      ? "COVER OPTED"
+      : COVER_NOT_OPTED;
+  const moneyTerrorism =
+    resolveMoneyCover("Opted", input.terrorism) === "Cover Opted with Terrorism"
+      ? "COVER OPTED"
+      : COVER_NOT_OPTED;
 
   // ---- Cover page (page 1): layout modeled on templates/headerRef.docx ----
   // Logo is in the page header (centered) on every page — not repeated in body.
@@ -779,7 +791,7 @@ export async function downloadPolicyDocx(
         slice.map((l) => locationTotalSI(l)),
       ),
       spanSectionRow("", "Fire Floater", fireFloater, "continue"),
-      spanSectionRow("", "Terrorism", terrorism, "continue"),
+      spanSectionRow("", "Terrorism", fireTerrorism, "continue"),
     ];
 
     const burglaryRows: TableRow[] = burglaryOpted
@@ -911,7 +923,7 @@ export async function downloadPolicyDocx(
         "Cash in till",
         slice.map((l) => (l.money.cover === "Opted" ? l.money.cash_in_till : 0)),
       ),
-      spanSectionRow("", "Terrorism", terrorism, "continue"),
+      spanSectionRow("", "Terrorism", moneyTerrorism, "continue"),
     ];
 
     const scheduleHeader = new TableRow({
