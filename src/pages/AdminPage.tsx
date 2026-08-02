@@ -11,7 +11,11 @@ import {
   updateGlobalSettings,
   updateRateMaster,
 } from "../lib/supabase/client";
-import type { GlobalSettings, RateMasterRow } from "../lib/calculator";
+import type {
+  GlobalSettings,
+  ProposalInput,
+  RateMasterRow,
+} from "../lib/calculator";
 import { computeFireRate } from "../lib/calculator";
 import { downloadProposalPdf } from "../lib/pdf/proposalPdf";
 import {
@@ -20,6 +24,7 @@ import {
 } from "../lib/policy/generatePolicyDocx";
 import { resolveProposalForExport } from "../lib/policy/resolveProposalForExport";
 import GeneratePolicyModal from "../components/GeneratePolicyModal";
+import CopySumInsuredModal from "../components/CopySumInsuredModal";
 
 const RATE_SETTING_KEYS = [
   "burglary_rate_pct",
@@ -93,6 +98,10 @@ export default function AdminPage() {
     null,
   );
   const [generatingPolicy, setGeneratingPolicy] = useState(false);
+  const [copyTarget, setCopyTarget] = useState<{
+    proposal: ProposalListItem;
+    input: ProposalInput;
+  } | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [tab, setTab] = useState<"rates" | "settings" | "limitations" | "proposals">(
     "rates",
@@ -208,6 +217,29 @@ export default function AdminPage() {
       );
     } finally {
       setGeneratingPolicy(false);
+    }
+  };
+
+  const handleOpenCopySumInsured = async (proposal: ProposalListItem) => {
+    if (!settings) return;
+    setActionBusyRef(proposal.reference_number);
+    setStatus(null);
+    try {
+      const { input } = await resolveProposalForExport(
+        proposal.reference_number,
+        rates,
+        settings,
+        pincodeMap,
+      );
+      setCopyTarget({ proposal, input });
+    } catch (err) {
+      setStatus(
+        err instanceof Error
+          ? err.message
+          : "Failed to load proposal for copy",
+      );
+    } finally {
+      setActionBusyRef(null);
     }
   };
 
@@ -586,6 +618,16 @@ export default function AdminPage() {
                       >
                         Generate Policy
                       </button>
+                      <button
+                        type="button"
+                        className="btn-secondary text-xs px-2 py-1"
+                        disabled={actionBusyRef === p.reference_number}
+                        onClick={() => handleOpenCopySumInsured(p)}
+                      >
+                        {actionBusyRef === p.reference_number
+                          ? "Loading..."
+                          : "Copy to clipboard"}
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -613,6 +655,15 @@ export default function AdminPage() {
             if (!generatingPolicy) setGenerateTarget(null);
           }}
           onGenerate={handleGeneratePolicy}
+        />
+      )}
+
+      {copyTarget && (
+        <CopySumInsuredModal
+          input={copyTarget.input}
+          insuredName={copyTarget.proposal.insured_name}
+          referenceNumber={copyTarget.proposal.reference_number}
+          onClose={() => setCopyTarget(null)}
         />
       )}
     </div>

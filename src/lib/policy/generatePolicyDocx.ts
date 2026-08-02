@@ -1179,28 +1179,42 @@ export async function downloadPolicyDocx(
     width: { size: 4500, type: WidthType.DXA },
     columnWidths: [2500, 2000],
     alignment: AlignmentType.LEFT,
-    rows: (
-      [
-        ["Terrorism Premium:", fmtMoney(terrorismPremium)],
-        ["Non-terrorism premium:", fmtMoney(nonTerrorismPremium)],
-        ["Premium summary:", fmtMoney(premiumSummary)],
-        ["GST (18%):", fmtMoney(gst)],
-        ["Stamp duty:", fmtMoney(stampDuty)],
-        ["Total:", fmtMoney(total)],
-      ] as Array<[string, string]>
-    ).map(
-      ([label, value], index) =>
-        new TableRow({
-          cantSplit: true,
-          children: [
-            cell(label, 2500, {
-              bold: true,
-              fill: index === 2 ? "D6E3F0" : "EEF2F7",
-            }),
-            cell(value, 2000, { align: AlignmentType.RIGHT, bold: true }),
-          ],
-        }),
-    ),
+    rows: [
+      new TableRow({
+        cantSplit: true,
+        children: [
+          cell("Premium Summary", 4500, {
+            bold: true,
+            span: 2,
+            align: AlignmentType.CENTER,
+            fill: "D6E3F0",
+            size: SIZE_SECTION,
+          }),
+        ],
+      }),
+      ...(
+        [
+          ["Non-terrorism premium:", fmtMoney(nonTerrorismPremium)],
+          ["Terrorism Premium:", fmtMoney(terrorismPremium)],
+          ["Total Premium:", fmtMoney(premiumSummary)],
+          ["GST (18%):", fmtMoney(gst)],
+          ["Stamp duty:", fmtMoney(stampDuty)],
+          ["Total:", fmtMoney(total)],
+        ] as Array<[string, string]>
+      ).map(
+        ([label, value], index) =>
+          new TableRow({
+            cantSplit: true,
+            children: [
+              cell(label, 2500, {
+                bold: true,
+                fill: index === 2 ? "D6E3F0" : "EEF2F7",
+              }),
+              cell(value, 2000, { align: AlignmentType.RIGHT, bold: true }),
+            ],
+          }),
+      ),
+    ],
   });
 
   // Keep premium breakdown, closing clauses, and signature on the same page
