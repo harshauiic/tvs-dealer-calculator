@@ -35,4 +35,5 @@ export {
   lookupEqZone,
   resolveFireCover,
   resolveMoneyCover,
+  roundPremium,
 } from "./utils";

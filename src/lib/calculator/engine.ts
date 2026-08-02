@@ -4,6 +4,7 @@ import {
   lookupEqZone,
   resolveFireCover,
   resolveMoneyCover,
+  roundPremium,
   sumPremiums,
 } from "./utils";
 import type {
@@ -681,20 +682,34 @@ export function calcProposal(
     sectionLimitErrors.find((e) => e.startsWith(FIDELITY_SCOPE)) ??
     calcFidelityPremium(gate, input.sections, settings);
 
-  const firePremiums = locationResults.map((l) => l.fire_premium);
-  const moneyPremiums = locationResults.map((l) => l.money_premium);
+  // Round every sectional premium to the nearest rupee so summaries match.
+  const roundedLocations = locationResults.map((l) => ({
+    ...l,
+    fire_premium: roundPremium(l.fire_premium),
+    money_premium: roundPremium(l.money_premium),
+  }));
+  const roundedFireFloaterPremium = roundPremium(fireFloaterPremium);
+  const roundedBurglaryPremium = roundPremium(burglaryPremium);
+  const roundedMbdPremium = roundPremium(mbdPremium);
+  const roundedPlatePremium = roundPremium(platePremium);
+  const roundedNeonPremium = roundPremium(neonPremium);
+  const roundedPublicLiabilityPremium = roundPremium(publicLiabilityPremium);
+  const roundedFidelityPremium = roundPremium(fidelityPremium);
+  const roundedTerrorismPremium = terrorismOpted
+    ? roundPremium(terrorismPremium)
+    : ("Cover Not Opted" as const);
 
   const allPremiums = [
-    ...firePremiums,
-    ...(stockFloater ? [fireFloaterPremium] : []),
-    burglaryPremium,
-    mbdPremium,
-    platePremium,
-    neonPremium,
-    publicLiabilityPremium,
-    fidelityPremium,
-    ...moneyPremiums,
-    ...(terrorismOpted ? [terrorismPremium] : []),
+    ...roundedLocations.map((l) => l.fire_premium),
+    ...(stockFloater ? [roundedFireFloaterPremium] : []),
+    roundedBurglaryPremium,
+    roundedMbdPremium,
+    roundedPlatePremium,
+    roundedNeonPremium,
+    roundedPublicLiabilityPremium,
+    roundedFidelityPremium,
+    ...roundedLocations.map((l) => l.money_premium),
+    ...(terrorismOpted ? [roundedTerrorismPremium] : []),
   ];
 
   const hasBlocker = allPremiums.some(
@@ -705,7 +720,7 @@ export function calcProposal(
     ? (allPremiums.find(
         (p) => typeof p === "string" && p !== "Cover Not Opted",
       ) ?? "Invalid input")
-    : Math.round(sumPremiums(allPremiums));
+    : sumPremiums(allPremiums);
 
   const gst =
     typeof netPremium === "number"
@@ -738,7 +753,7 @@ export function calcProposal(
 
   if (errors.length > 0) {
     return {
-      locations: locationResults.map((l) => ({
+      locations: roundedLocations.map((l) => ({
         ...l,
         fire_rate: null,
         fire_premium:
@@ -785,31 +800,33 @@ export function calcProposal(
   }
 
   return {
-    locations: locationResults,
+    locations: roundedLocations,
     sections: {
       burglary_si: burglarySI,
-      burglary_premium: burglaryPremium,
+      burglary_premium: roundedBurglaryPremium,
       mbd_si: mbdSI,
-      mbd_premium: mbdPremium,
+      mbd_premium: roundedMbdPremium,
       plate_glass_si: plateSI,
-      plate_glass_premium: platePremium,
+      plate_glass_premium: roundedPlatePremium,
       neon_sign_si: neonSI,
-      neon_sign_premium: neonPremium,
+      neon_sign_premium: roundedNeonPremium,
       public_liability_si:
         input.sections.public_liability === "Cover Opted"
           ? input.sections.public_liability_si
           : 0,
-      public_liability_premium: publicLiabilityPremium,
+      public_liability_premium: roundedPublicLiabilityPremium,
       fidelity_si:
         input.sections.fidelity === "Cover Opted"
           ? input.sections.fidelity_floater_si
           : 0,
-      fidelity_premium: fidelityPremium,
+      fidelity_premium: roundedFidelityPremium,
     },
     fire_floater_si: stockFloater ? input.floater_cover.floater_sum_insured : 0,
-    fire_floater_premium: stockFloater ? fireFloaterPremium : "Cover Not Opted",
+    fire_floater_premium: stockFloater
+      ? roundedFireFloaterPremium
+      : "Cover Not Opted",
     fire_floater_rate: stockFloater ? highestLocationRate : null,
-    terrorism_premium: terrorismPremium,
+    terrorism_premium: roundedTerrorismPremium,
     net_premium: netPremium,
     gst,
     total_premium: totalPremium,

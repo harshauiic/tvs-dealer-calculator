@@ -99,6 +99,14 @@ export function isNumericPremium(value: number | string): value is number {
   return typeof value === "number" && !Number.isNaN(value);
 }
 
+/** Round a numeric premium to the nearest rupee; leave status strings unchanged. */
+export function roundPremium<T extends number | string>(value: T): T {
+  if (typeof value === "number" && !Number.isNaN(value)) {
+    return Math.round(value) as T;
+  }
+  return value;
+}
+
 export function sumPremiums(values: Array<number | string>): number {
   return values.reduce<number>((acc, v) => {
     if (typeof v === "number") return acc + v;
@@ -110,8 +118,9 @@ export function formatCurrency(value: number): string {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
-    maximumFractionDigits: 2,
-  }).format(value);
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  }).format(Math.round(value));
 }
 
 export function generateReferenceNumber(): string {

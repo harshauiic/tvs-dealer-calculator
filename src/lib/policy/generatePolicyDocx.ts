@@ -65,10 +65,7 @@ function fmtNum(value: number): string {
 }
 
 function fmtMoney(value: number): string {
-  return value.toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  return Math.round(value).toLocaleString("en-IN");
 }
 
 function formatDisplayDate(isoDate: string): string {

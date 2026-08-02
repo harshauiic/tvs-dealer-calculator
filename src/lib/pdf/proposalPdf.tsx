@@ -163,7 +163,7 @@ function formatAmount(value: number): string {
 }
 
 function displayPremium(value: number | string): string {
-  if (typeof value === "number") return formatAmount(Math.round(value * 100) / 100);
+  if (typeof value === "number") return formatAmount(Math.round(value));
   if (isStatusMessage(value)) {
     return value.includes("Kindly refer proposal to office")
       ? "Kindly refer proposal to office"

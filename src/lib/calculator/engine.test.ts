@@ -98,20 +98,54 @@ describe("calcProposal", () => {
 
     const result = calcProposal(input, rateMaster, pincodeMap, settings);
 
-    expect(result.net_premium).toBe(Math.round(aditiFixture.expected.net_premium));
+    // Net is the sum of per-line premiums rounded to the nearest rupee.
+    const sectionalNet =
+      result.locations.reduce(
+        (s, l) =>
+          s +
+          (typeof l.fire_premium === "number" ? l.fire_premium : 0) +
+          (typeof l.money_premium === "number" ? l.money_premium : 0),
+        0,
+      ) +
+      (typeof result.sections.burglary_premium === "number"
+        ? result.sections.burglary_premium
+        : 0) +
+      (typeof result.sections.mbd_premium === "number"
+        ? result.sections.mbd_premium
+        : 0) +
+      (typeof result.sections.plate_glass_premium === "number"
+        ? result.sections.plate_glass_premium
+        : 0) +
+      (typeof result.sections.neon_sign_premium === "number"
+        ? result.sections.neon_sign_premium
+        : 0) +
+      (typeof result.sections.public_liability_premium === "number"
+        ? result.sections.public_liability_premium
+        : 0) +
+      (typeof result.sections.fidelity_premium === "number"
+        ? result.sections.fidelity_premium
+        : 0) +
+      (typeof result.terrorism_premium === "number"
+        ? result.terrorism_premium
+        : 0);
+    expect(result.net_premium).toBe(sectionalNet);
+    expect(
+      Math.abs(
+        (result.net_premium as number) -
+          Math.round(aditiFixture.expected.net_premium),
+      ),
+    ).toBeLessThanOrEqual(5);
     expect(result.gst).toBe(
-      Math.round(Math.round(aditiFixture.expected.net_premium) * (settings.gst_rate_pct / 100)),
+      Math.round((result.net_premium as number) * (settings.gst_rate_pct / 100)),
     );
     expect(result.total_premium).toBe(
       (result.net_premium as number) + (result.gst as number),
     );
-    expect(result.sections.burglary_premium).toBeCloseTo(
-      aditiFixture.expected.burglary_premium,
-      1,
+    expect(result.sections.burglary_premium).toBe(
+      Math.round(aditiFixture.expected.burglary_premium),
     );
-    expect(result.sections.mbd_premium).toBeCloseTo(
-      aditiFixture.expected.mbd_premium,
-      1,
+    expect(result.sections.mbd_premium).toBe(
+      Math.round(aditiFixture.expected.mbd_premium),
     );
   });
 
@@ -123,7 +157,7 @@ describe("calcProposal", () => {
     const result = calcProposal(input, rateMaster, pincodeMap, settings);
 
     aditiFixture.locations.forEach((loc, i) => {
-      expect(result.locations[i].fire_premium).toBeCloseTo(loc.fire_premium, 1);
+      expect(result.locations[i].fire_premium).toBe(Math.round(loc.fire_premium));
     });
   });
 
@@ -196,9 +230,8 @@ describe("calcProposal", () => {
     expect(valid.sections.burglary_si).toBe(baseBurglary);
     expect(typeof valid.fire_floater_premium).toBe("number");
     expect(valid.fire_floater_rate).not.toBeNull();
-    expect(valid.fire_floater_premium as number).toBeCloseTo(
-      (10_000_000 * (valid.fire_floater_rate as number)) / 1000,
-      2,
+    expect(valid.fire_floater_premium as number).toBe(
+      Math.round((10_000_000 * (valid.fire_floater_rate as number)) / 1000),
     );
   });
 
@@ -229,7 +262,7 @@ describe("calcProposal", () => {
       (s, l) => s + (typeof l.fire_premium === "number" ? l.fire_premium : 0),
       0,
     );
-    expect(fireSumWith).toBeCloseTo(fireSumWithout, 2);
+    expect(fireSumWith).toBe(fireSumWithout);
 
     const moneySumWith = withTerror.locations.reduce(
       (s, l) => s + (typeof l.money_premium === "number" ? l.money_premium : 0),
@@ -239,16 +272,12 @@ describe("calcProposal", () => {
       (s, l) => s + (typeof l.money_premium === "number" ? l.money_premium : 0),
       0,
     );
-    expect(moneySumWith).toBeCloseTo(moneySumWithout, 2);
+    expect(moneySumWith).toBe(moneySumWithout);
 
-    // Net rounds to nearest rupee; with-terror net ≈ without + terrorism.
-    expect(
-      Math.abs(
-        (withTerror.net_premium as number) -
-          ((withoutTerror.net_premium as number) +
-            (withTerror.terrorism_premium as number)),
-      ),
-    ).toBeLessThanOrEqual(1);
+    expect(withTerror.net_premium as number).toBe(
+      (withoutTerror.net_premium as number) +
+        (withTerror.terrorism_premium as number),
+    );
   });
 
   it("bands floater fire rates by Maximum stock SI per location (<=5Cr vs >5Cr)", () => {
