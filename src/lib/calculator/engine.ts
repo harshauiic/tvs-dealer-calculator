@@ -340,12 +340,19 @@ function calcLocationFirePremium(
   rateMaster: RateMasterRow[],
   settings: GlobalSettings,
   locationIndex: number,
-): { premium: number | string; rate: number | null } {
+): {
+  premium: number | string;
+  rate: number | null;
+  terrorismPremium: number;
+  terrorismRate: number;
+} {
   const scope = fireLocationScope(locationIndex);
   if (isClaimedHistory(loc.claims_history)) {
     return {
       premium: scoped(scope, "Kindly refer proposal to office"),
       rate: null,
+      terrorismPremium: 0,
+      terrorismRate: 0,
     };
   }
 
@@ -354,27 +361,30 @@ function calcLocationFirePremium(
     return {
       premium: scoped(scope, "Invalid occupancy/EQ zone"),
       rate: null,
+      terrorismPremium: 0,
+      terrorismRate: 0,
     };
   }
 
   const nonStockSI = locationNonStockSI(loc);
+  const bandSI = stockFloater
+    ? locationFloaterBandSI(maxPerLocation)
+    : locationTotalSI(loc);
+  // Sectional fire rate/premium exclude terrorism; terror is billed separately.
   const locationRate = stockFloater
-    ? computeFireRate(
-        row,
-        locationFloaterBandSI(maxPerLocation),
-        withTerrorism,
-        settings,
-        "inclusive",
-      )
-    : computeFireRate(row, locationTotalSI(loc), withTerrorism, settings);
-
-  if (stockFloater) {
-    return { premium: (nonStockSI * locationRate) / 1000, rate: locationRate };
-  }
+    ? computeFireRate(row, bandSI, false, settings, "inclusive")
+    : computeFireRate(row, bandSI, false, settings);
+  const premiumSI = stockFloater ? nonStockSI : locationTotalSI(loc);
+  const premium = (premiumSI * locationRate) / 1000;
+  const terrorismPremium = withTerrorism
+    ? (premiumSI * row.terrorism_rate) / 1000
+    : 0;
 
   return {
-    premium: (locationTotalSI(loc) * locationRate) / 1000,
+    premium,
     rate: locationRate,
+    terrorismPremium,
+    terrorismRate: row.terrorism_rate,
   };
 }
 
@@ -383,23 +393,25 @@ function calcLocationMoneyPremium(
   settings: GlobalSettings,
   terrorism: ProposalInput["terrorism"],
   locationIndex: number,
-): { totalSI: number; premium: number | string } {
+): { totalSI: number; premium: number | string; terrorismPremium: number } {
   const money = loc.money;
   const scope = moneyLocationScope(locationIndex);
   const effectiveCover = resolveMoneyCover(money.cover, terrorism);
   if (effectiveCover === "Cover Not Opted") {
-    return { totalSI: 0, premium: "Cover Not Opted" };
+    return { totalSI: 0, premium: "Cover Not Opted", terrorismPremium: 0 };
   }
   if (!money.annual_carrying_limit || money.annual_carrying_limit <= 0) {
     return {
       totalSI: 0,
       premium: scoped(scope, "Please enter Annual Carrying limit"),
+      terrorismPremium: 0,
     };
   }
   if (!money.single_carrying_limit || money.single_carrying_limit <= 0) {
     return {
       totalSI: 0,
       premium: scoped(scope, "Please enter Single carrying limit"),
+      terrorismPremium: 0,
     };
   }
   if (
@@ -413,22 +425,28 @@ function calcLocationMoneyPremium(
         scope,
         "Single carrying limit should be less than Annual Carrying limit",
       ),
+      terrorismPremium: 0,
     };
   }
 
   const limitErrors = validateMoneyFieldLimits(loc, settings, locationIndex);
   if (limitErrors.length > 0) {
-    return { totalSI: 0, premium: limitErrors[0] };
+    return { totalSI: 0, premium: limitErrors[0], terrorismPremium: 0 };
   }
 
   const totalSI =
     money.annual_carrying_limit + money.cash_in_safe + money.cash_in_till;
-  const ratePct =
-    effectiveCover === "Cover Opted with Terrorism"
-      ? settings.money_with_terror_rate_pct
-      : settings.money_without_terror_rate_pct;
+  const basePremium = totalSI * (settings.money_without_terror_rate_pct / 100);
+  const withTerror =
+    effectiveCover === "Cover Opted with Terrorism";
+  const terrorismPremium = withTerror
+    ? totalSI *
+      ((settings.money_with_terror_rate_pct -
+        settings.money_without_terror_rate_pct) /
+        100)
+    : 0;
 
-  return { totalSI, premium: totalSI * (ratePct / 100) };
+  return { totalSI, premium: basePremium, terrorismPremium };
 }
 
 export function calcProposal(
@@ -448,7 +466,13 @@ export function calcProposal(
   const floaterErrors = validateFloaterCover(input);
   const sectionLimitErrors = validateSectionLimits(input, settings);
 
-  const locationResults: LocationResult[] = input.locations.map((loc, index) => {
+  type LocationCalc = LocationResult & {
+    fire_terrorism_premium: number;
+    fire_terrorism_rate: number;
+    money_terrorism_premium: number;
+  };
+
+  const locationCalcs: LocationCalc[] = input.locations.map((loc, index) => {
     const eqZone = lookupEqZone(loc.pincode, pincodes);
     const fireErrors = validateLocationFields(loc, eqZone, index);
     const fireLimitErrors = validateFireFieldLimits(
@@ -462,6 +486,8 @@ export function calcProposal(
 
     let firePremium: number | string = 0;
     let fireRate: number | null = null;
+    let fireTerrorismPremium = 0;
+    let fireTerrorismRate = 0;
 
     if (fireLimitErrors.length > 0) {
       firePremium = fireLimitErrors[0];
@@ -478,6 +504,8 @@ export function calcProposal(
       );
       firePremium = fire.premium;
       fireRate = fire.rate;
+      fireTerrorismPremium = fire.terrorismPremium;
+      fireTerrorismRate = fire.terrorismRate;
     } else if (isLocationStarted(loc) && fireErrors.length > 0) {
       firePremium = fireErrors[0];
     } else if (isLocationStarted(loc) && eqZone === null && loc.pincode.length === 6) {
@@ -496,29 +524,74 @@ export function calcProposal(
       non_stock_si: locationNonStockSI(loc),
       fire_rate: fireRate,
       fire_premium: firePremium,
+      fire_terrorism_premium: fireTerrorismPremium,
+      fire_terrorism_rate: fireTerrorismRate,
       money_total_si: money.totalSI,
       money_premium: money.premium,
+      money_terrorism_premium: money.terrorismPremium,
       errors: isLocationStarted(loc)
         ? [...fireErrors, ...fireLimitErrors, ...moneyLimitErrors]
         : [],
     };
   });
 
-  const locationRates = locationResults
-    .map((l) => l.fire_rate)
-    .filter((r): r is number => r !== null);
-  const highestLocationRate =
-    locationRates.length > 0 ? Math.max(...locationRates) : null;
+  const toLocationResult = (loc: LocationCalc): LocationResult => ({
+    id: loc.id,
+    eq_zone: loc.eq_zone,
+    total_si: loc.total_si,
+    non_stock_si: loc.non_stock_si,
+    fire_rate: loc.fire_rate,
+    fire_premium: loc.fire_premium,
+    money_total_si: loc.money_total_si,
+    money_premium: loc.money_premium,
+    errors: loc.errors,
+  });
+
+  // Floater uses the location with the highest combined (base + terror) rate,
+  // matching prior selection; sectional floater premium excludes terror.
+  const floaterAnchor = locationCalcs.reduce<LocationCalc | null>((best, loc) => {
+    if (loc.fire_rate === null) return best;
+    const combined =
+      loc.fire_rate + (withFireTerrorism ? loc.fire_terrorism_rate : 0);
+    if (!best || best.fire_rate === null) return loc;
+    const bestCombined =
+      best.fire_rate + (withFireTerrorism ? best.fire_terrorism_rate : 0);
+    return combined > bestCombined ? loc : best;
+  }, null);
+
+  const highestLocationRate = floaterAnchor?.fire_rate ?? null;
 
   let fireFloaterPremium: number | string = 0;
+  let floaterTerrorismPremium = 0;
   if (stockFloater) {
     if (floaterErrors.length > 0) {
       fireFloaterPremium = floaterErrors[0];
-    } else if (highestLocationRate !== null) {
+    } else if (highestLocationRate !== null && floaterAnchor) {
       fireFloaterPremium =
         (input.floater_cover.floater_sum_insured * highestLocationRate) / 1000;
+      if (withFireTerrorism) {
+        floaterTerrorismPremium =
+          (input.floater_cover.floater_sum_insured *
+            floaterAnchor.fire_terrorism_rate) /
+          1000;
+      }
     }
   }
+
+  const terrorismPremiumTotal =
+    locationCalcs.reduce(
+      (sum, loc) =>
+        sum + loc.fire_terrorism_premium + loc.money_terrorism_premium,
+      0,
+    ) + floaterTerrorismPremium;
+  const terrorismOpted =
+    withFireTerrorism ||
+    locationCalcs.some((loc) => loc.money_terrorism_premium > 0);
+  const terrorismPremium: number | string = terrorismOpted
+    ? terrorismPremiumTotal
+    : "Cover Not Opted";
+
+  const locationResults = locationCalcs.map(toLocationResult);
 
   const firstValidFire = locationResults.find((l) =>
     typeof l.fire_premium === "number",
@@ -621,6 +694,7 @@ export function calcProposal(
     publicLiabilityPremium,
     fidelityPremium,
     ...moneyPremiums,
+    ...(terrorismOpted ? [terrorismPremium] : []),
   ];
 
   const hasBlocker = allPremiums.some(
@@ -701,6 +775,7 @@ export function calcProposal(
       fire_floater_si: 0,
       fire_floater_premium: stockFloater ? 0 : "Cover Not Opted",
       fire_floater_rate: null,
+      terrorism_premium: terrorismOpted ? 0 : "Cover Not Opted",
       net_premium: "Incomplete",
       gst: "Incomplete",
       total_premium: "Incomplete",
@@ -734,6 +809,7 @@ export function calcProposal(
     fire_floater_si: stockFloater ? input.floater_cover.floater_sum_insured : 0,
     fire_floater_premium: stockFloater ? fireFloaterPremium : "Cover Not Opted",
     fire_floater_rate: stockFloater ? highestLocationRate : null,
+    terrorism_premium: terrorismPremium,
     net_premium: netPremium,
     gst,
     total_premium: totalPremium,

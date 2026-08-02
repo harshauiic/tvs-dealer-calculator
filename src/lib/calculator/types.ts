@@ -335,6 +335,8 @@ export interface ProposalResult {
   fire_floater_si: number;
   fire_floater_premium: number | string;
   fire_floater_rate: number | null;
+  /** Terrorism add-on premium (fire + floater + money), separate from sectional premiums. */
+  terrorism_premium: number | string;
   net_premium: number | string;
   gst: number | string;
   total_premium: number | string;

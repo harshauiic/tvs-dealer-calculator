@@ -183,6 +183,7 @@ function collectNotes(result: ProposalResult): string[] {
   const premiums = [
     ...result.locations.flatMap((l) => [l.fire_premium, l.money_premium]),
     result.fire_floater_premium,
+    result.terrorism_premium,
     result.sections.burglary_premium,
     result.sections.mbd_premium,
     result.sections.plate_glass_premium,
@@ -249,6 +250,15 @@ function buildSummaryRows(result: ProposalResult) {
       si: loc.money_total_si,
       premium: loc.money_premium,
     })),
+    ...(result.terrorism_premium !== "Cover Not Opted"
+      ? [
+          {
+            section: "Terrorism premium",
+            si: 0,
+            premium: result.terrorism_premium,
+          },
+        ]
+      : []),
   ];
   return rows.filter((row) => row.premium !== "Cover Not Opted");
 }

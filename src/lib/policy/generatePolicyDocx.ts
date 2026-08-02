@@ -463,9 +463,6 @@ export async function downloadPolicyDocx(
   const neonOpted = input.sections.neon_sign === "Cover Opted";
   const plOpted = input.sections.public_liability === "Cover Opted";
   const fidelityOpted = input.sections.fidelity === "Cover Opted";
-  const fireFloater = input.floater_cover.enabled
-    ? fmtNum(input.floater_cover.floater_sum_insured)
-    : COVER_NOT_OPTED;
   const fireTerrorism =
     resolveFireCover(input.terrorism) === "Cover Opted with Terrorism"
       ? "COVER OPTED"
@@ -474,6 +471,9 @@ export async function downloadPolicyDocx(
     resolveMoneyCover("Opted", input.terrorism) === "Cover Opted with Terrorism"
       ? "COVER OPTED"
       : COVER_NOT_OPTED;
+  const terrorismPremium =
+    typeof result.terrorism_premium === "number" ? result.terrorism_premium : 0;
+  const showTerrorismPremium = result.terrorism_premium !== "Cover Not Opted";
 
   // ---- Cover page (page 1): layout modeled on templates/headerRef.docx ----
   // Logo is in the page header (centered) on every page — not repeated in body.
@@ -653,10 +653,6 @@ export async function downloadPolicyDocx(
   });
 
 
-  const burglaryFloater = input.floater_cover.enabled
-    ? fmtNum(input.floater_cover.floater_sum_insured)
-    : COVER_NOT_OPTED;
-
   function buildScheduleTable(
     slice: ProposalInput["locations"],
     startIndex: number,
@@ -790,7 +786,6 @@ export async function downloadPolicyDocx(
         "Total SI",
         slice.map((l) => locationTotalSI(l)),
       ),
-      spanSectionRow("", "Fire Floater", fireFloater, "continue"),
       spanSectionRow("", "Terrorism", fireTerrorism, "continue"),
     ];
 
@@ -830,7 +825,6 @@ export async function downloadPolicyDocx(
                 (input.floater_cover.enabled ? 0 : l.stocks_si),
             ),
           ),
-          spanSectionRow("", "Stock Floater SI", burglaryFloater, "continue"),
         ]
       : [spanSectionRow("Section 2 – Burglary", "Sum Insured", COVER_NOT_OPTED)];
 
@@ -1014,6 +1008,38 @@ export async function downloadPolicyDocx(
     return chunkIndex === 0 ? [table] : [p(""), table];
   });
 
+  const floaterTable = input.floater_cover.enabled
+    ? new Table({
+        width: { size: PAGE_WIDTH, type: WidthType.DXA },
+        columnWidths: [3500, 7500],
+        rows: [
+          new TableRow({
+            children: [
+              cell("Stock Floater", PAGE_WIDTH, {
+                bold: true,
+                span: 2,
+                align: AlignmentType.CENTER,
+                fill: "D6E3F0",
+                size: SIZE_SECTION,
+              }),
+            ],
+          }),
+          new TableRow({
+            children: [
+              cell("Floater Sum Insured", 3500, { bold: true }),
+              cell(fmtNum(input.floater_cover.floater_sum_insured), 7500),
+            ],
+          }),
+          new TableRow({
+            children: [
+              cell("Applicability", 3500, { bold: true }),
+              cell("Common to all locations", 7500),
+            ],
+          }),
+        ],
+      })
+    : null;
+
   const deductiblesTable = new Table({
     width: { size: PAGE_WIDTH, type: WidthType.DXA },
     columnWidths: [3500, 7500],
@@ -1170,11 +1196,14 @@ export async function downloadPolicyDocx(
       }),
       ...(
         [
+          ...(showTerrorismPremium
+            ? [["Terrorism premium:", fmtMoney(terrorismPremium)]]
+            : []),
           ["Premium:", fmtMoney(net)],
           ["GST (18%):", fmtMoney(gst)],
           ["Stamp duty:", fmtMoney(stampDuty)],
           ["Total:", fmtMoney(total)],
-        ] as const
+        ] as Array<[string, string]>
       ).map(
         ([label, value]) =>
           new TableRow({
@@ -1270,6 +1299,7 @@ export async function downloadPolicyDocx(
           p(""),
           ...scheduleBlocks,
           p(""),
+          ...(floaterTable ? [floaterTable, p("")] : []),
           deductiblesTable,
           p(""),
           definitionsTable,

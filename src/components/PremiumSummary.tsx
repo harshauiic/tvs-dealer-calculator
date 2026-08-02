@@ -40,6 +40,7 @@ function collectPremiumMessages(result: ProposalResult): string[] {
   const premiums = [
     ...result.locations.flatMap((l) => [l.fire_premium, l.money_premium]),
     result.fire_floater_premium,
+    result.terrorism_premium,
     result.sections.burglary_premium,
     result.sections.mbd_premium,
     result.sections.plate_glass_premium,
@@ -132,6 +133,15 @@ function buildSummaryRows(result: ProposalResult): SummaryRow[] {
       premium: loc.money_premium,
     });
   });
+
+  if (result.terrorism_premium !== "Cover Not Opted") {
+    rows.push({
+      key: "terrorism",
+      section: "Terrorism premium",
+      sumInsured: 0,
+      premium: result.terrorism_premium,
+    });
+  }
 
   return rows.filter((row) => row.premium !== "Cover Not Opted");
 }

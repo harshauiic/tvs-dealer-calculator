@@ -202,6 +202,55 @@ describe("calcProposal", () => {
     );
   });
 
+  it("bills terrorism separately from fire, floater, and money premiums", () => {
+    const input = buildAditiInput();
+    input.terrorism = {
+      opted: true,
+      scope: "Both fire and money in transit",
+    };
+    const pincodeMap = new Map(
+      aditiFixture.locations.map((l) => [l.pincode, Number(l.eq_zone)]),
+    );
+
+    const withTerror = calcProposal(input, rateMaster, pincodeMap, settings);
+    expect(typeof withTerror.terrorism_premium).toBe("number");
+    expect(withTerror.terrorism_premium as number).toBeGreaterThan(0);
+
+    input.terrorism = { opted: false, scope: "" };
+    const withoutTerror = calcProposal(input, rateMaster, pincodeMap, settings);
+    expect(withoutTerror.terrorism_premium).toBe("Cover Not Opted");
+
+    // Sectional fire/money premiums exclude terrorism; net still includes it.
+    const fireSumWith = withTerror.locations.reduce(
+      (s, l) => s + (typeof l.fire_premium === "number" ? l.fire_premium : 0),
+      0,
+    );
+    const fireSumWithout = withoutTerror.locations.reduce(
+      (s, l) => s + (typeof l.fire_premium === "number" ? l.fire_premium : 0),
+      0,
+    );
+    expect(fireSumWith).toBeCloseTo(fireSumWithout, 2);
+
+    const moneySumWith = withTerror.locations.reduce(
+      (s, l) => s + (typeof l.money_premium === "number" ? l.money_premium : 0),
+      0,
+    );
+    const moneySumWithout = withoutTerror.locations.reduce(
+      (s, l) => s + (typeof l.money_premium === "number" ? l.money_premium : 0),
+      0,
+    );
+    expect(moneySumWith).toBeCloseTo(moneySumWithout, 2);
+
+    // Net rounds to nearest rupee; with-terror net ≈ without + terrorism.
+    expect(
+      Math.abs(
+        (withTerror.net_premium as number) -
+          ((withoutTerror.net_premium as number) +
+            (withTerror.terrorism_premium as number)),
+      ),
+    ).toBeLessThanOrEqual(1);
+  });
+
   it("bands floater fire rates by Maximum stock SI per location (<=5Cr vs >5Cr)", () => {
     const input = buildAditiInput();
     const pincodeMap = new Map(
