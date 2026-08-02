@@ -117,11 +117,13 @@ function p(
     after?: number;
     before?: number;
     color?: string;
+    keepNext?: boolean;
   },
 ) {
   return new Paragraph({
     alignment: opts?.center ? AlignmentType.CENTER : AlignmentType.LEFT,
     spacing: { after: opts?.after ?? 40, before: opts?.before ?? 0 },
+    keepNext: opts?.keepNext,
     children: [
       run(text, {
         bold: opts?.bold,
@@ -473,7 +475,8 @@ export async function downloadPolicyDocx(
       : COVER_NOT_OPTED;
   const terrorismPremium =
     typeof result.terrorism_premium === "number" ? result.terrorism_premium : 0;
-  const showTerrorismPremium = result.terrorism_premium !== "Cover Not Opted";
+  const nonTerrorismPremium = Math.max(0, net - terrorismPremium);
+  const premiumSummary = terrorismPremium + nonTerrorismPremium;
 
   // ---- Cover page (page 1): layout modeled on templates/headerRef.docx ----
   // Logo is in the page header (centered) on every page — not repeated in body.
@@ -1008,37 +1011,34 @@ export async function downloadPolicyDocx(
     return chunkIndex === 0 ? [table] : [p(""), table];
   });
 
-  const floaterTable = input.floater_cover.enabled
-    ? new Table({
-        width: { size: PAGE_WIDTH, type: WidthType.DXA },
-        columnWidths: [3500, 7500],
-        rows: [
-          new TableRow({
-            children: [
-              cell("Stock Floater", PAGE_WIDTH, {
-                bold: true,
-                span: 2,
-                align: AlignmentType.CENTER,
-                fill: "D6E3F0",
-                size: SIZE_SECTION,
-              }),
-            ],
-          }),
-          new TableRow({
-            children: [
-              cell("Floater Sum Insured", 3500, { bold: true }),
-              cell(fmtNum(input.floater_cover.floater_sum_insured), 7500),
-            ],
-          }),
-          new TableRow({
-            children: [
-              cell("Applicability", 3500, { bold: true }),
-              cell("Common to all locations", 7500),
-            ],
+  const floaterTable = new Table({
+    width: { size: PAGE_WIDTH, type: WidthType.DXA },
+    columnWidths: [3500, 7500],
+    rows: [
+      new TableRow({
+        children: [
+          cell("Stock Floater", PAGE_WIDTH, {
+            bold: true,
+            span: 2,
+            align: AlignmentType.CENTER,
+            fill: "D6E3F0",
+            size: SIZE_SECTION,
           }),
         ],
-      })
-    : null;
+      }),
+      new TableRow({
+        children: [
+          cell("Floater Sum Insured", 3500, { bold: true }),
+          cell(
+            input.floater_cover.enabled
+              ? fmtNum(input.floater_cover.floater_sum_insured)
+              : COVER_NOT_OPTED,
+            7500,
+          ),
+        ],
+      }),
+    ],
+  });
 
   const deductiblesTable = new Table({
     width: { size: PAGE_WIDTH, type: WidthType.DXA },
@@ -1180,60 +1180,97 @@ export async function downloadPolicyDocx(
 
   const premiumTable = new Table({
     width: { size: 4500, type: WidthType.DXA },
-    columnWidths: [2200, 2300],
+    columnWidths: [2500, 2000],
     alignment: AlignmentType.LEFT,
+    rows: (
+      [
+        ["Terrorism Premium:", fmtMoney(terrorismPremium)],
+        ["Non-terrorism premium:", fmtMoney(nonTerrorismPremium)],
+        ["Premium summary:", fmtMoney(premiumSummary)],
+        ["GST (18%):", fmtMoney(gst)],
+        ["Stamp duty:", fmtMoney(stampDuty)],
+        ["Total:", fmtMoney(total)],
+      ] as Array<[string, string]>
+    ).map(
+      ([label, value], index) =>
+        new TableRow({
+          cantSplit: true,
+          children: [
+            cell(label, 2500, {
+              bold: true,
+              fill: index === 2 ? "D6E3F0" : "EEF2F7",
+            }),
+            cell(value, 2000, { align: AlignmentType.RIGHT, bold: true }),
+          ],
+        }),
+    ),
+  });
+
+  // Keep premium breakdown, closing clauses, and signature on the same page
+  // so the signature block is never left alone on the last page.
+  const closingBlock = new Table({
+    width: { size: PAGE_WIDTH, type: WidthType.DXA },
+    columnWidths: [PAGE_WIDTH],
     rows: [
       new TableRow({
+        cantSplit: true,
         children: [
-          cell("Premium Summary", 4500, {
-            bold: true,
-            span: 2,
-            align: AlignmentType.CENTER,
-            fill: "D6E3F0",
-            size: SIZE_SECTION,
+          new TableCell({
+            borders: {
+              top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+              bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+              left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+              right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+            },
+            width: { size: PAGE_WIDTH, type: WidthType.DXA },
+            children: [
+              premiumTable,
+              new Paragraph({ spacing: { after: 80 }, children: [] }),
+              p(
+                "We hereby declare that though our aggregate turnover in any preceding financial year from 2017-18 onwards is more than the aggregate turnover notified under sub-rule (4) of rule 48, we are not required to prepare an invoice in terms of the provisions of the said sub-rule.",
+                { size: SIZE_SMALL, keepNext: true },
+              ),
+              new Paragraph({
+                spacing: { after: 60 },
+                keepNext: true,
+                children: [],
+              }),
+              p(
+                "Anti Money Laundering Clause:-In the event of a claim under the policy exceeding 1 lakh or a claim for refund of premium exceeding 1 lakh, the insured will comply with the provisions of AML policy of the company. The AML policy is available in all our operating offices as well as Company's web site.",
+                { size: SIZE_SMALL, keepNext: true },
+              ),
+              new Paragraph({
+                spacing: { after: 60 },
+                keepNext: true,
+                children: [],
+              }),
+              p(
+                "LET US JOIN THE FIGHT AGAINST CORRUPTION. PLEASE TAKE THE PLEDGE AT https://pledge.cvc.nic.in.",
+                { size: SIZE_SMALL, keepNext: true, after: 120 },
+              ),
+              p("For and On behalf of", { keepNext: true, after: 40 }),
+              p("United India Insurance Co. Ltd.", {
+                bold: true,
+                size: SIZE_SECTION,
+                after: 60,
+                keepNext: true,
+              }),
+              new Paragraph({
+                spacing: { before: 40, after: 40 },
+                children: [
+                  new ImageRun({
+                    type: "png",
+                    data: signatureBytes,
+                    transformation: { width: 160, height: 96 },
+                  }),
+                ],
+              }),
+            ],
           }),
         ],
       }),
-      ...(
-        [
-          ...(showTerrorismPremium
-            ? [["Terrorism premium:", fmtMoney(terrorismPremium)]]
-            : []),
-          ["Premium:", fmtMoney(net)],
-          ["GST (18%):", fmtMoney(gst)],
-          ["Stamp duty:", fmtMoney(stampDuty)],
-          ["Total:", fmtMoney(total)],
-        ] as Array<[string, string]>
-      ).map(
-        ([label, value]) =>
-          new TableRow({
-            children: [
-              cell(label, 2200, { bold: true, fill: "EEF2F7" }),
-              cell(value, 2300, { align: AlignmentType.RIGHT, bold: true }),
-            ],
-          }),
-      ),
     ],
   });
-
-  const signatureBlock = [
-    p("For and On behalf of", { before: 200 }),
-    p("United India Insurance Co. Ltd.", {
-      bold: true,
-      size: SIZE_SECTION,
-      after: 80,
-    }),
-    new Paragraph({
-      spacing: { before: 60, after: 40 },
-      children: [
-        new ImageRun({
-          type: "png",
-          data: signatureBytes,
-          transformation: { width: 160, height: 96 },
-        }),
-      ],
-    }),
-  ];
 
   const logoHeader = new Header({
     children: [logoParagraph(logoBytes, 110, 84, 40, AlignmentType.CENTER)],
@@ -1299,28 +1336,13 @@ export async function downloadPolicyDocx(
           p(""),
           ...scheduleBlocks,
           p(""),
-          ...(floaterTable ? [floaterTable, p("")] : []),
+          floaterTable,
+          p(""),
           deductiblesTable,
           p(""),
           definitionsTable,
           ...conditionsBlocks,
-          premiumTable,
-          p(""),
-          p(
-            "We hereby declare that though our aggregate turnover in any preceding financial year from 2017-18 onwards is more than the aggregate turnover notified under sub-rule (4) of rule 48, we are not required to prepare an invoice in terms of the provisions of the said sub-rule.",
-            { size: SIZE_SMALL },
-          ),
-          p(""),
-          p(
-            "Anti Money Laundering Clause:-In the event of a claim under the policy exceeding 1 lakh or a claim for refund of premium exceeding 1 lakh, the insured will comply with the provisions of AML policy of the company. The AML policy is available in all our operating offices as well as Company's web site.",
-            { size: SIZE_SMALL },
-          ),
-          p(""),
-          p(
-            "LET US JOIN THE FIGHT AGAINST CORRUPTION. PLEASE TAKE THE PLEDGE AT https://pledge.cvc.nic.in.",
-            { size: SIZE_SMALL },
-          ),
-          ...signatureBlock,
+          closingBlock,
         ],
       },
     ],
