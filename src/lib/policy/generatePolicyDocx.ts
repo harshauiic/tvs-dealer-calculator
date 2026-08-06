@@ -1037,6 +1037,44 @@ export async function downloadPolicyDocx(
     ],
   });
 
+  const hypothecationEntries = (
+    [
+      ["Hypothecation 1", input.hypothecation_1],
+      ["Hypothecation 2", input.hypothecation_2],
+      ["Hypothecation 3", input.hypothecation_3],
+    ] as const
+  ).filter(([, value]) => value.trim().length > 0);
+
+  const hypothecationTable =
+    hypothecationEntries.length > 0
+      ? new Table({
+          width: { size: PAGE_WIDTH, type: WidthType.DXA },
+          columnWidths: [3500, 7500],
+          rows: [
+            new TableRow({
+              children: [
+                cell("Hypothecation", PAGE_WIDTH, {
+                  bold: true,
+                  span: 2,
+                  align: AlignmentType.CENTER,
+                  fill: "D6E3F0",
+                  size: SIZE_SECTION,
+                }),
+              ],
+            }),
+            ...hypothecationEntries.map(
+              ([label, value]) =>
+                new TableRow({
+                  children: [
+                    cell(label, 3500, { bold: true }),
+                    cell(value.trim(), 7500),
+                  ],
+                }),
+            ),
+          ],
+        })
+      : null;
+
   const deductiblesTable = new Table({
     width: { size: PAGE_WIDTH, type: WidthType.DXA },
     columnWidths: [3500, 7500],
@@ -1349,6 +1387,7 @@ export async function downloadPolicyDocx(
           p(""),
           floaterTable,
           p(""),
+          ...(hypothecationTable ? [hypothecationTable, p("")] : []),
           deductiblesTable,
           p(""),
           definitionsTable,

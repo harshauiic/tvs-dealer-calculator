@@ -11,13 +11,21 @@ function locationTotalSI(loc: ProposalInput["locations"][0]): number {
   );
 }
 
+function moneyTotalSI(loc: ProposalInput["locations"][0]): number {
+  return (
+    loc.money.annual_carrying_limit +
+    loc.money.cash_in_safe +
+    loc.money.cash_in_till
+  );
+}
+
 function line(label: string, value: string | number): string {
   const formatted =
     typeof value === "number" ? formatCurrency(value) : value;
   return `  ${label}: ${formatted}`;
 }
 
-/** Plain-text sum insured listing for clipboard (location-wise, opted sections only). */
+/** Plain-text sum insured listing for clipboard (location + section totals only). */
 export function buildSumInsuredClipboardText(input: ProposalInput): string {
   const blocks: string[] = [];
   const { sections, floater_cover: floater } = input;
@@ -27,18 +35,7 @@ export function buildSumInsuredClipboardText(input: ProposalInput): string {
       `Location ${index + 1}${loc.address ? ` — ${loc.address}` : ""}${
         loc.pincode ? ` (${loc.pincode})` : ""
       }`,
-      "",
-      "Section 1 - Fire",
-      line("Building SI", loc.building_si),
-      line("Plant and machinery SI", loc.plant_machinery_si),
-      line("Furniture Fixtures SI", loc.furniture_si),
-      line("Plate glass SI", loc.plate_glass_si),
-      line("Neon sign SI", loc.neon_sign_si),
-      line(
-        "Stocks SI",
-        floater.enabled ? "As per floater" : loc.stocks_si,
-      ),
-      line("Total Fire SI", locationTotalSI(loc)),
+      line("Section 1 - Fire", locationTotalSI(loc)),
     ];
 
     if (sections.burglary === "Cover Opted") {
@@ -48,91 +45,45 @@ export function buildSumInsuredClipboardText(input: ProposalInput): string {
         loc.plate_glass_si +
         loc.neon_sign_si +
         (floater.enabled ? 0 : loc.stocks_si);
-      lines.push(
-        "",
-        "Section 2 - Burglary",
-        line("Plant and machinery SI", loc.plant_machinery_si),
-        line("Furniture Fixtures SI", loc.furniture_si),
-        line("Plate glass SI", loc.plate_glass_si),
-        line("Neon sign SI", loc.neon_sign_si),
-        line(
-          "Stocks SI",
-          floater.enabled ? "As per floater" : loc.stocks_si,
-        ),
-        line("Total Burglary SI", burglaryTotal),
-      );
+      lines.push(line("Section 2 - Burglary", burglaryTotal));
     }
 
     if (sections.mbd_eei === "Cover Opted") {
-      lines.push(
-        "",
-        "Section 3 - MBD/EEI",
-        line("Sum Insured", loc.plant_machinery_si),
-      );
+      lines.push(line("Section 3 - MBD/EEI", loc.plant_machinery_si));
     }
 
     if (sections.plate_glass === "Cover Opted") {
-      lines.push(
-        "",
-        "Section 4 - Plate glass",
-        line("Sum Insured", loc.plate_glass_si),
-      );
+      lines.push(line("Section 4 - Plate glass", loc.plate_glass_si));
     }
 
     if (sections.neon_sign === "Cover Opted") {
-      lines.push(
-        "",
-        "Section 5 - Neon sign",
-        line("Sum Insured", loc.neon_sign_si),
-      );
+      lines.push(line("Section 5 - Neon sign", loc.neon_sign_si));
     }
 
     if (loc.money.cover === "Opted") {
-      lines.push(
-        "",
-        "Section 8 - Money in transit",
-        line("Annual carrying limit", loc.money.annual_carrying_limit),
-        line("Single carrying limit", loc.money.single_carrying_limit),
-        line("Cash in safe", loc.money.cash_in_safe),
-        line("Cash in till", loc.money.cash_in_till),
-      );
+      lines.push(line("Section 8 - Money in transit", moneyTotalSI(loc)));
     }
 
     blocks.push(lines.join("\n"));
   });
 
-  const common: string[] = [];
+  const common: string[] = ["Common"];
 
   if (floater.enabled) {
-    common.push(
-      "Stock Floater (common to all locations)",
-      line("Floater Sum Insured", floater.floater_sum_insured),
-      line(
-        "Maximum stock SI per location",
-        floater.max_sum_insured_per_location,
-      ),
-    );
+    common.push(line("Stock Floater", floater.floater_sum_insured));
   }
 
   if (sections.public_liability === "Cover Opted") {
-    if (common.length) common.push("");
     common.push(
-      "Section 6 - Public Liability (common)",
-      line("Sum Insured", sections.public_liability_si),
+      line("Section 6 - Public Liability", sections.public_liability_si),
     );
   }
 
   if (sections.fidelity === "Cover Opted") {
-    if (common.length) common.push("");
-    common.push(
-      "Section 7 - Fidelity (common)",
-      line("No. of permanent employees", sections.fidelity_employees),
-      line("Floater SI", sections.fidelity_floater_si),
-      line("Per employee limit", sections.fidelity_per_employee_limit),
-    );
+    common.push(line("Section 7 - Fidelity", sections.fidelity_floater_si));
   }
 
-  if (common.length) {
+  if (common.length > 1) {
     blocks.push(common.join("\n"));
   }
 
