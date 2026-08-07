@@ -593,11 +593,11 @@ export default function AdminPage() {
                   <td className="p-2 font-mono text-xs">{p.reference_number}</td>
                   <td className="p-2">{p.insured_name}</td>
                   <td className="p-2">{new Date(p.created_at).toLocaleString()}</td>
-                  <td className="p-2">
-                    <div className="flex flex-wrap gap-2 items-center">
+                  <td className="p-2 min-w-[14rem]">
+                    <div className="grid grid-cols-2 gap-1.5">
                       <Link
                         to={`/load/${p.reference_number}`}
-                        className="text-blue-700 hover:underline text-xs"
+                        className="btn-secondary text-xs px-2 py-1 text-center"
                       >
                         Open
                       </Link>
