@@ -35,6 +35,7 @@ export function buildSumInsuredClipboardText(input: ProposalInput): string {
       `Location ${index + 1}${loc.address ? ` — ${loc.address}` : ""}${
         loc.pincode ? ` (${loc.pincode})` : ""
       }`,
+      line("Occupancy", loc.occupancy || "-"),
       line("Section 1 - Fire", locationTotalSI(loc)),
     ];
 

@@ -558,7 +558,8 @@ function ProposalDocument({
                 </Text>
               </View>
             ) : (
-              <>
+              <View style={styles.nestedBox}>
+                <Text style={styles.nestedTitle}>Expiring policy details</Text>
                 <View style={styles.row}>
                   <Text style={styles.label}>Insurance company</Text>
                   <Text style={styles.value}>{loc.insurance_company || "-"}</Text>
@@ -571,7 +572,7 @@ function ProposalDocument({
                       : loc.period_of_cover || "-"}
                   </Text>
                 </View>
-              </>
+              </View>
             )}
 
             <Text style={{ fontWeight: "bold", marginTop: 6, marginBottom: 3 }}>
